@@ -1,0 +1,159 @@
+---
+name: factory-handoff
+description: Audit a reviewed PR against what was actually asked for, confirm it carries real proof and an honest risk list, then present the user a link, a status, and a merge recommendation — and watch for their approval or comments. In an opt-in auto-merge run it makes the merge call itself, but only at 9/10-or-better confidence with no human-eyes items and a clean match to the original ask. Use when the `software-factory` controller reaches the surface-to-human stage, or when the user asks to "show me the PR", "is this PR ready for me", or "check this PR against what I asked for". Read-only: it never changes code, pushes, or merges.
+---
+
+# Factory: surface the PR to the human
+
+The user's attention is the scarcest thing in this pipeline. Your job is to spend
+it well: verify the PR is genuinely ready to be looked at, then hand it over with
+a recommendation you would stand behind.
+
+You run **in the controller's session**, because you talk to the user. You are
+read-only — no code changes, no pushes, no merges.
+
+**Read `~/.claude/skills/software-factory/references/conventions.md`** for the
+run-state file and PR-body shape.
+
+## 1. Does it match what was asked for?
+
+Load the run-state file and re-read the original task statement verbatim. Then
+read the PR as it now stands (`gh pr view <N>`, `gh pr diff <N>`). Note the
+run's merge mode while you are there — it changes what you do at step 5, but
+nothing about how hard you look.
+
+Answer plainly:
+
+- Does the change do what was asked? Point at the code that does it.
+- Is anything asked for **missing**? Name it.
+- Is anything there that was **not** asked for? Scope creep gets called out, even
+  when it is an improvement.
+- Did review reinterpret the problem? Sometimes correctly — but the user decides
+  whether the reinterpretation is the one they wanted.
+
+A mismatch does not stop the handoff. It becomes the headline.
+
+## 2. Is the proof real?
+
+The PR must contain evidence, not assertions.
+
+- Screenshots for UI, request/response for APIs, failing-then-passing test for a
+  bug fix, numbers for performance (conventions → proof table).
+- Spot-check it. If a test run is quoted, the test should exist; if a route was
+  exercised, the route should exist. Quoted output that does not correspond to
+  anything in the diff is a finding.
+- CI green now: `gh pr checks <N>`.
+
+"Proof it works: builds cleanly" is not proof. Say so rather than passing it
+along.
+
+## 3. Is the risk list honest?
+
+*Needs human eyes* must exist and must be specific — `path/file.ts:42` plus why.
+An empty risk list on a non-trivial change is itself a risk: it usually means the
+review looked for typos rather than for trouble.
+
+Cross-check it against the diff: anything you would want a human to look at that
+the PR does not mention gets added to your report (not to the PR — you do not
+edit it).
+
+## 4. Give the user the verdict
+
+One compact block, no preamble:
+
+```
+**#118 — Fix login redirect loop** · https://github.com/owner/repo/pull/118
+
+Status      Green · 3 review passes · confidence 8/10
+Matches ask Yes — redirect loop fixed at the session layer
+Proof       Before/after screenshots, failing→passing test (session.concurrent)
+Human eyes  src/auth/session.ts:88 — token-refresh race, fixed but subtle
+            src/auth/session.ts:120 — 30s refresh window is a guess, confirm
+Scope       +1 unrelated fix (stale import cleanup) in its own commit
+
+**Recommendation: merge after checking the 30s window.**
+```
+
+The recommendation is one of:
+
+- **Merge** — matches the ask, proof is real, risks are minor and listed.
+- **Merge after checking X** — ready, but one specific thing needs the user's eye.
+- **Do not merge yet** — a mismatch with the ask, missing or fake proof, red CI,
+  or a risk the user has to rule on before it lands.
+
+Say which, in bold, on its own line. Never pad the verdict to be agreeable.
+
+## 5. Auto mode — decide instead of waiting
+
+If the run state has `autoMerge: true`, everything above still happened — the
+audit is not skipped, and in auto mode it is the last independent judgment before
+code lands. Then work the gate table in conventions → *Auto-merge gate*. Yours to
+check are the three the audit covers:
+
+- *Needs human eyes* is exactly `None.`
+- The PR does what the task statement asked, and nothing more.
+- The proof is present and spot-checks out.
+
+Plus the two carried in run state: confidence **9/10 or better**, and review
+finished within five passes.
+
+**All gates hold** → record `autoMergeDecision: "merged"`, tell the controller to
+run `factory-land` in auto mode, and state plainly that it is going in unreviewed:
+
+```
+Auto-merge gates met — 9/10, no human-eyes items, green, matches the ask.
+Merging without your review. Diff: <url>/files
+```
+
+**Any gate fails** → record `autoMergeDecision: "deferred: <gate>"`, say which
+gate in one line, and continue to step 6 as a normal manual handoff.
+
+Your verdict from step 4 overrides the score. A 9/10 PR that does not match the
+ask, or whose proof you could not reproduce, does **not** auto-merge — you are the
+only stage that has seen the original request, and that is exactly the failure a
+reviewer scoring its own work cannot catch. Never soften a finding, and never
+round an 8 up, to let a gate pass.
+
+At 9/10 the reviewer has said out loud that something caps its confidence. Read
+what that something is, in the PR's *Confidence* line. If it names a risk a human
+would want to weigh in on, that belongs in *Needs human eyes* — and a populated
+*Needs human eyes* means no auto-merge. A 9 whose caveat has quietly gone
+unrecorded is the gap this threshold opens; closing it is your job.
+
+## 6. Watch for the user's response
+
+Then wait for the user. Offer the two ways to wait and use whichever they pick:
+
+- **Poll** — check every few minutes with
+  `gh pr view <N> --json reviewDecision,state,comments,reviews`, up to a stated
+  limit, then report. The `loop` skill does this properly if they want it left
+  running.
+- **Park it** — stop here. The run state holds everything; the user resumes with
+  `/factory-handoff <PR>` or by approving in GitHub and saying so.
+
+Do not sit in a tight polling loop, and do not treat silence as approval.
+
+Outcomes:
+
+- **Approved** (GitHub approval, or the user saying so here) → set run state
+  `stage: "land"` and tell the controller to run `factory-land`.
+- **Comments or change requests** → collect every unresolved thread
+  (`gh pr view <N> --comments`, plus review threads) and hand them to the
+  controller for a **fresh** `factory-review` agent. Pass the comments and the PR
+  number — nothing else. Then this stage runs again on the result.
+- **Rejected / abandoned** → tell the controller to run the cleanup half of
+  `factory-land`, so no worktree, branch or lock is left behind.
+
+## Rules
+
+- **Never change code, push, or merge.** If something is wrong, report it and let
+  the review stage fix it.
+- **Never approve on the user's behalf**, and never infer approval from silence,
+  a thumbs-up on an unrelated message, or a green build. Auto mode is the single
+  exception, it is opt-in for that one run, and it still requires every gate.
+- **Never waive or reinterpret a gate to reach an auto-merge.** A deferred
+  auto-merge is the mechanism working.
+- **Never soften the verdict.** A "do not merge yet" that reads like a "merge" is
+  the one failure this stage cannot recover from.
+- Do not answer the user's review comments yourself — route them to the reviewer,
+  who has the code in hand.
