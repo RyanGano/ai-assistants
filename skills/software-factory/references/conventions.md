@@ -288,20 +288,27 @@ worktree to produce them, and review then starts over from scratch.
 
 ## PR body shape
 
-Markdown, and always these sections:
+Markdown. The sections are split by stage:
 
 ```markdown
-## What changed
-## Why
-## Proof it works
-## Needs human eyes
-## Confidence
+## What changed        <- factory-implement
+## Why                 <- factory-implement
+## Proof it works      <- factory-implement (review keeps it current)
+## Review findings     <- factory-review
+## Needs human eyes    <- factory-review
+## Confidence          <- factory-review
 ```
 
 - **Proof it works** — the evidence from the table above, inline.
+- **Review findings** — what review found and fixed, one line each.
 - **Needs human eyes** — specific `file.ts:42` links to subtle or risky code, or
   `None.` Never leave it empty.
 - **Confidence** — `x/10` plus one sentence on what caps it.
+
+The implementer never writes the last three. Review is the gate on whether a PR
+is complete and mergeable, and a risk list handed to it by the author gets
+inherited rather than judged. Review writes those sections from its own passes
+alone.
 - End the body with:
   ```
   🤖 Generated with [Claude Code](https://claude.com/claude-code)

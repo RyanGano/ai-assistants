@@ -23,6 +23,13 @@ chat history, or any explanation of what the change was *supposed* to do beyond
 what the PR itself says. Do not ask for it and do not accept it if offered. If
 the PR does not explain itself, that is finding number one.
 
+**You are the gate.** Whether this PR is complete and mergeable is your call,
+not the author's. The implementer does not write *Needs human eyes*,
+*Confidence*, or any risk list — if the PR body arrives carrying one anyway
+(an older run, a hand-written PR), treat every item as an unverified claim:
+check it against the code, fix it or drop it, and never copy it forward because
+it was already there.
+
 Work in the PR's existing worktree if you were handed one; otherwise check the
 branch out in a worktree of your own (conventions) — and **never** in a tree
 another agent holds a lock on.
@@ -203,8 +210,9 @@ reinventing the procedure.
 
 ## 5. Rewrite the PR description
 
-Markdown, the five conventions sections, updated to reflect the code as it now
-stands — not as it was when opened. Add:
+Markdown, the conventions sections, updated to reflect the code as it now
+stands — not as it was when opened. The last three are yours alone, written
+fresh from your own passes:
 
 - **Proof it works** — keep the images. If your own fixes changed what the
   screen does, the existing captures are now stale evidence: say so in the
@@ -216,7 +224,9 @@ stands — not as it was when opened. Add:
 - **Needs human eyes** — specific `path/file.ts:42` pointers to code a human
   must actually look at: business rules you inferred, a trade-off you chose, an
   unhappy path you could not exercise, anything you fixed but are not certain
-  about. Also anything you chose not to fix.
+  about. Also anything you chose not to fix. Every item is one *you* found and
+  still stand behind — nothing inherited from the body you were handed. `None.`
+  is a legitimate answer when you have earned it.
 - **Confidence** — `x/10`, with one sentence on what caps it. 10/10 is almost
   never honest.
 

@@ -57,7 +57,7 @@ a fast no.
 No shortcuts. Specifically:
 
 - **Root cause, not symptom.** If the fix is a workaround, say so in the commit
-  message and in *Needs human eyes*.
+  message and in the PR's *What changed*.
 - **DRY where it's genuinely the same thing.** Two pieces of code that merely
   look alike today are not duplication — abstracting them couples them. Factor
   out shared *meaning*, not shared *shape*.
@@ -137,18 +137,19 @@ gh pr create --base "$DEFAULT" --head "$BRANCH" \
   --title "<concise, imperative>" --body-file "$SCRATCH/pr-body.md"
 ```
 
-Body uses the five required sections (conventions → *PR body shape*). Two of
-them carry your real obligations:
+Body uses the three implement-stage sections — *What changed*, *Why*, *Proof it
+works* (conventions → *PR body shape*). **Proof it works** carries your real
+obligation: the evidence from step 4, inline. Before/after images embedded in a
+two-column table so they render side by side in the PR, command output in fenced
+blocks beneath them. If there are no images, this section opens with the
+one-sentence reason the change has no visible surface.
 
-- **Proof it works** — the evidence from step 4, inline. Before/after images
-  embedded in a two-column table so they render side by side in the PR, command
-  output in fenced blocks beneath them. If there are no images, this section
-  opens with the one-sentence reason the change has no visible surface.
-- **Needs human eyes** — point at the specific code you are least sure about,
-  as `path/file.ts:42`, with one line on *why* it is hard: concurrency, a
-  guessed-at business rule, an unhappy path you could not exercise, a
-  performance trade-off. If you genuinely have none, write `None.` and expect to
-  be wrong about that.
+**Do not write *Needs human eyes*, *Confidence*, or any other risk list or
+self-assessment.** Those sections belong to `factory-review`, which writes them
+from its own passes. A list from you reads to the reviewer as a vetted verdict —
+it gets carried forward instead of re-derived, and review stops being the gate.
+If something you built worries you, fix it or make the code and its commit
+message explain it; the reviewer will find it from there.
 
 Include `Closes #<issue>` when there is an issue. Open it as a normal PR — the
 review stage runs next, and drafts block some CI setups.
@@ -175,14 +176,14 @@ controller, and nothing more:
 PR #118 — https://github.com/owner/repo/pull/118
 Branch Fix_42 · worktree C:/Code/.sf-worktrees/myapp/Fix_42 · checks green
 Proof: before/after screenshots (sf-proof/Fix_42), failing→passing test for the redirect loop
-Needs human eyes: src/auth/session.ts:88 (token refresh race)
 ```
 
 ## Rules
 
 - **Never** work in a tree another agent owns. Collision → stop.
 - **Never** review your own work adversarially — that is the next agent's job,
-  and your self-assessment would contaminate it.
+  and your self-assessment would contaminate it. That includes the PR body: no
+  *Needs human eyes*, no *Confidence*, no "areas of concern" by another name.
 - **Never** merge, never delete the worktree, never release the lock.
 - **Never** push to the default branch.
 - **Never describe a screen instead of showing it.** If the change is visible,
