@@ -35,17 +35,23 @@ A mismatch does not stop the handoff. It becomes the headline.
 
 ## 2. Is the proof real?
 
-The PR must contain evidence, not assertions.
+The PR must contain evidence, not assertions — and where the change is visible,
+that evidence is images (conventions → *Visual proof first*).
 
-- Screenshots for UI, request/response for APIs, failing-then-passing test for a
-  bug fix, numbers for performance (conventions → proof table).
-- Spot-check it. If a test run is quoted, the test should exist; if a route was
-  exercised, the route should exist. Quoted output that does not correspond to
-  anything in the diff is a finding.
+- **Look at the images.** Open the PR and confirm they render, that the pair
+  shows the screen the change actually affects, and that "before" and "after"
+  differ in the way the PR claims. An image that does not load is not proof.
+- **No images?** Then the PR must say, in one sentence, why the change has no
+  visible surface — and that claim has to survive a glance at the diff. Review
+  should have caught this; if it reached you anyway, say so in the headline and
+  tell the user the proof gate was not met.
+- Textual evidence alongside: a test run quoted should exist, a route exercised
+  should exist. Quoted output that corresponds to nothing in the diff is a
+  finding.
 - CI green now: `gh pr checks <N>`.
 
-"Proof it works: builds cleanly" is not proof. Say so rather than passing it
-along.
+"Proof it works: builds cleanly" is not proof, and neither is "verified manually
+in the browser". Say so rather than passing it along.
 
 ## 3. Is the risk list honest?
 
@@ -66,7 +72,7 @@ One compact block, no preamble:
 
 Status      Green · 3 review passes · confidence 8/10
 Matches ask Yes — redirect loop fixed at the session layer
-Proof       Before/after screenshots, failing→passing test (session.concurrent)
+Proof       Before/after screenshots (render OK), failing→passing test (session.concurrent)
 Human eyes  src/auth/session.ts:88 — token-refresh race, fixed but subtle
             src/auth/session.ts:120 — 30s refresh window is a guess, confirm
 Scope       +1 unrelated fix (stale import cleanup) in its own commit
@@ -92,7 +98,8 @@ check are the three the audit covers:
 
 - *Needs human eyes* is exactly `None.`
 - The PR does what the task statement asked, and nothing more.
-- The proof is present and spot-checks out.
+- The proof is present and spot-checks out — including the images, where the
+  change has a visible surface.
 
 Plus the two carried in run state: confidence **9/10 or better**, and review
 finished within five passes.

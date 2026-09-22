@@ -95,8 +95,10 @@ the worktree being deleted:
   "baseBranch": "main",
   "pr": 118,
   "prUrl": "https://github.com/owner/repo/pull/118",
+  "proofBranch": "sf-proof/Fix_42",
   "stage": "implement | review | handoff | land | done | blocked",
   "reviewPasses": 2,
+  "kickbacks": 0,
   "confidence": 8,
   "autoMerge": false,
   "autoMergeDecision": null,
@@ -155,19 +157,124 @@ Two deliberate properties of this design:
 
 ## Verification is not optional
 
-"It builds" is not proof. Each run must carry evidence appropriate to the change:
+"It builds" is not proof. Every run carries evidence appropriate to the change,
+and **visual evidence is the default**.
 
-| Change type | Acceptable proof |
+### Visual proof first
+
+If a person could see the change by looking at the running software, the proof
+is **before/after images** — not a sentence describing them.
+
+The test is simple: *could someone watch this change happen on a screen?* If
+yes, visual proof is available, and it is mandatory. That covers more than
+"UI work":
+
+- any UI change — layout, styling, copy, a new control, a rendering bug;
+- a backend, query or data fix whose effect surfaces in the UI (a wrong total, a
+  missing row, a stale cache) — capture the screen showing it wrong, then right;
+- an error, empty, loading or offline state; a responsive breakpoint;
+- rendered output that is not a web page — a generated PDF, chart, image, email
+  template, or a CLI whose *appearance* changed;
+- a crash or a broken page: the failure screen is half the proof.
+
+Rules for the images:
+
+- **Before and after, same view, same viewport, same data.** A pair that differs
+  in two things at once proves nothing.
+- **Crop to the area that changed**, tightly enough that the difference is
+  obvious without being told where to look. Annotate only if it is still not.
+- **One pair per distinct behavior.** Three fixed states means three pairs.
+- **A short recording** (GIF or MP4) replaces the pair when the change is
+  motion, timing, or a sequence of interactions.
+- **Real captures of the real app**, taken from a run you actually performed —
+  never a mockup, a drawing, or a picture of what it is supposed to look like.
+- The `run` skill knows how to launch this project's app; use it rather than
+  inventing a launch procedure.
+
+**Textual proof is the fallback, not the default.** Command output, captured
+requests and responses, and test runs stand alone as proof only when the change
+has no visible surface at all. Where the table below asks for both, they
+accompany the images rather than replacing them.
+
+| Change type | Proof required |
 | --- | --- |
-| UI | Before/after screenshots (the `run` skill can drive the app) |
-| API / route | Actual request + response captured (`curl`, `Invoke-RestMethod`) |
-| Bug fix | A test that fails before the fix and passes after — show both runs |
-| Performance | Timing numbers before and after, same machine, stated method |
-| Refactor | Full test suite output, plus what proves behavior is unchanged |
+| UI, or anything rendered to a screen | Before/after screenshots; a recording when the change is motion or an interaction sequence |
+| Bug fix with a visible symptom | Before/after screenshots of the symptom **and** a test failing before, passing after |
+| Bug fix with no visible symptom | A test that fails before the fix and passes after — show both runs |
+| API / route | Actual request + response captured (`curl`, `Invoke-RestMethod`), **plus** screenshots of any client screen whose behavior changes |
+| Performance | Timing numbers before and after, same machine, stated method; add a capture of the profiler or timing view when the tooling has one |
+| Refactor, no behavior change | Full test suite output, plus what proves behavior is unchanged |
+| Build, CI, infrastructure, docs | Whatever the change actually affects — a passing workflow run, the rendered docs page, the build log |
 
-Paste real command output. **Never** describe a result you did not observe. If
-proof could not be obtained, say so explicitly and say why — that is a finding,
-not a failure to hide.
+"No visual proof was available" is a claim the review stage tests, so only make
+it when it is true. It holds when nothing a person can look at changed. It does
+**not** hold because the app was awkward to launch, because the change felt
+internal, or because a test run seemed like enough. If the app genuinely could
+not be started, that is a stated obstacle with a reason — not an absence of
+visual surface — and it belongs in the PR in those words.
+
+Paste real command output. **Never** describe a result you did not observe, and
+never embed an image you did not capture from a run you performed.
+
+### Publishing proof images
+
+Images must be visible **inside the PR**, so a reader sees them without
+downloading anything. They never go on the PR branch — proof is evidence about
+the change, not part of it.
+
+Push them to an orphan proof branch in the same repo, built with plumbing so no
+working tree is ever switched:
+
+```bash
+PROOF_BRANCH="sf-proof/$BRANCH"
+GITDIR=$(git -C "$WT" rev-parse --absolute-git-dir)
+export GIT_INDEX_FILE="$SCRATCH/proof.index"; rm -f "$GIT_INDEX_FILE"
+git --git-dir="$GITDIR" --work-tree="$SCRATCH/proof" add -A .
+TREE=$(git --git-dir="$GITDIR" write-tree)
+COMMIT=$(git --git-dir="$GITDIR" commit-tree "$TREE" -m "Proof images for $BRANCH")
+git --git-dir="$GITDIR" push --force origin "$COMMIT:refs/heads/$PROOF_BRANCH"
+unset GIT_INDEX_FILE
+```
+
+`$SCRATCH/proof` holds only the images (`before-<thing>.png`,
+`after-<thing>.png`). The branch has no parent and no source files; `--force` is
+safe on it and only on it, because each push replaces the run's own proof.
+
+Embed them in the PR body:
+
+```markdown
+| Before | After |
+| --- | --- |
+| ![before](https://raw.githubusercontent.com/<owner>/<repo>/sf-proof/<branch>/before-cart-total.png) | ![after](https://raw.githubusercontent.com/<owner>/<repo>/sf-proof/<branch>/after-cart-total.png) |
+```
+
+In a **private** repo `raw.githubusercontent.com` will not render; use
+`https://github.com/<owner>/<repo>/blob/sf-proof/<branch>/<file>.png?raw=true`,
+which resolves for signed-in users with access. Either way, open the PR
+afterwards and confirm the images actually render — a broken image is no proof.
+
+The proof branch outlives the merge, so the PR keeps rendering forever;
+`factory-land` deletes the run's feature branch and leaves the proof branch
+alone.
+
+### Missing visual proof goes back to the builder
+
+A PR that *could* carry visual proof and does not is not reviewable, and the
+reviewer does not quietly capture the images itself — that would make the
+reviewer the author of the evidence it is supposed to judge.
+
+`factory-review` stops and reports `proof-kickback`, naming the exact captures
+it wants. The controller re-dispatches `factory-implement` on the same branch and
+worktree to produce them, and review then starts over from scratch.
+
+- Increment `kickbacks` in run state on each one.
+- **Two kickbacks maximum.** If the third review still finds the proof missing,
+  the run goes to the user with `Proof: none — <reason>` as the headline rather
+  than looping further.
+- A kickback is not a review pass; `reviewPasses` starts again from zero when
+  review restarts.
+- The kickback message stays PR-shaped — what is missing and what to capture,
+  never why the change was made or who asked for it.
 
 ## Commits
 
@@ -205,7 +312,7 @@ Markdown, and always these sections:
 | Stage | Must not |
 | --- | --- |
 | `factory-implement` | Review its own work adversarially, merge, delete worktrees, or touch another run's branch |
-| `factory-review` | Know anything about the run beyond the PR itself; merge; open new PRs |
+| `factory-review` | Know anything about the run beyond the PR itself; merge; open new PRs; capture the missing proof itself instead of kicking the PR back |
 | `factory-handoff` | Change code, push, or merge |
 | `factory-land` | Merge anything unapproved or red; land a PR it also reviewed |
 

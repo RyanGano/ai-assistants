@@ -13,6 +13,9 @@ skill that can do only its own job:
 factory-implement  →  factory-review  →  factory-handoff  →  factory-land
    (subagent)           (subagent)         (this session)     (this session)
    isolated worktree    PR-only context    user decides       merge + cleanup
+        ^                    |
+        +--------------------+
+         proof kickback: visual proof was possible and is missing
 ```
 
 **Read `references/conventions.md` (next to this file) before starting.** It
@@ -112,10 +115,38 @@ You have no other context, and must not seek any outside the PR itself.
 Outcomes:
 
 - **Passed** (≥ 90% confidence) — go to stage 3.
+- **Proof kickback** — the PR could have carried before/after images and did
+  not. Send it back to the builder, not on to the user (below).
 - **Unresolvable** (5 passes without reaching confidence) — do **not** send it
   back in. Report to the user that the PR needs rewriting, recommend closing the
   PR and starting a fresh run with a revised task statement, and stop. Preserve
   the review agent's findings — they are the input to the rewrite.
+
+### Proof kickback
+
+Spawn a fresh `factory-implement` subagent on the **same branch and worktree**,
+passing the reviewer's kickback message verbatim and nothing else you know:
+
+```
+Invoke the `factory-implement` skill. This is a proof-kickback re-entry —
+the branch, worktree, lock and PR already exist and are yours.
+Run state: C:/Code/myapp/.git/software-factory/runs/42-login-redirect.json
+<the reviewer's kickback message, verbatim>
+Capture the proof it asks for, publish it, update the PR, and report back.
+```
+
+Then run stage 2 again with a **new** review subagent, from scratch — the old
+one saw a PR that no longer exists. Increment `kickbacks` in run state and reset
+`reviewPasses`.
+
+**Two kickbacks maximum** (conventions). If a third review still finds the proof
+missing, stop looping and take the run to stage 3 with the missing proof as the
+headline, so the user decides whether to accept it.
+
+Never tell the review agent that a previous review kicked this PR back, and
+never argue with a kickback on the builder's behalf. If the proof is genuinely
+unobtainable, that surfaces to the user — it is not something the controller
+waives.
 
 ## 4. Stage 3 — audit and surface
 

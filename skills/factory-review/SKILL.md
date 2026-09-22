@@ -1,6 +1,6 @@
 ---
 name: factory-review
-description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance — fixing every issue found with a why-first commit, looping until ≥90% confidence or declaring the PR unresolvable after five passes, then squashing into coherent commits and rewriting the PR description with a confidence score. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
+description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance, and refusing outright any PR that could show before/after visual proof but only asserts in text — fixing every issue found with a why-first commit, looping until ≥90% confidence or declaring the PR unresolvable after five passes, then squashing into coherent commits and rewriting the PR description with a confidence score. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
 ---
 
 # Factory: adversarial review
@@ -67,7 +67,61 @@ cost and the conditions under which it bites.
 
 **Proof** — Does the PR's *Proof it works* section show real evidence, or
 assertions? Reproduce it yourself where you can. Evidence you cannot reproduce
-is a finding.
+is a finding. Visual proof gets its own gate, below, and that gate runs first.
+
+## 1b. The visual-proof gate — run this first, every pass
+
+Before anything else in a pass, decide whether this change **could** be shown in
+before/after images. Ask only one question, of the diff itself: *could someone
+watch this change happen on a screen?*
+
+Answer yes if the change touches — or changes the behavior of — anything a
+person looks at: a view, template, component, style, string shown to a user, a
+chart or generated document, an error or empty state, or a query, endpoint,
+handler or calculation whose result reaches a screen. A crash fix qualifies: the
+broken screen is capturable. Trace the change outward before answering no; a
+one-line backend fix very often has a visible surface one layer up.
+
+Answer no only when nothing renders: build scripts, CI config, lockfiles, a pure
+internal refactor with no observable output, a library with no UI consumer in
+this repo.
+
+**If the answer is yes and the PR has no rendered before/after images, stop the
+review.** Not a finding to fix, not a point deducted — the review does not
+continue. Report `proof-kickback` to the controller:
+
+```
+PROOF KICKBACK — PR #118
+Visible surface: the cart total on /checkout, changed by src/cart/total.ts:44.
+Missing: before/after captures of the checkout summary with a multi-item cart,
+showing the total wrong then right.
+Present instead: a passing unit test and the sentence "verified in the browser".
+```
+
+Name the screen, the file that changes it, and the exact captures you want.
+Nothing else — no framing, no theory of what the author was trying to do.
+
+Rules for this gate:
+
+- **Do not capture the images yourself.** You judge evidence; you do not author
+  it. Producing the proof you then accept destroys the independence the whole
+  stage exists for.
+- **Prose is never a substitute.** "Verified manually", "looks correct in dev",
+  "screenshots omitted for brevity" all fail the gate.
+- **Test a claimed absence.** If the PR says the change has no visible surface,
+  check the diff before believing it. A wrong claim fails the gate; a correct
+  one passes it and the review proceeds on textual proof.
+- **Images must actually render.** Open the PR and look. A broken image, a link
+  to a local path, or a file committed onto the PR branch instead of the proof
+  branch fails the gate.
+- **Images must match the diff.** A pair that shows a screen the change cannot
+  affect, or an "after" identical to the "before", is worse than no proof — that
+  is a finding in its own right, and you say so plainly.
+- Where the proof table asks for images **and** text — a visible bug fix needs
+  the failing→passing test too — missing text is an ordinary finding you fix or
+  list, not a kickback. Only missing *images* kick back.
+
+If the gate passes, continue to step 2 with the rest of your findings.
 
 ## 2. Fix what you find
 
@@ -152,6 +206,10 @@ reinventing the procedure.
 Markdown, the five conventions sections, updated to reflect the code as it now
 stands — not as it was when opened. Add:
 
+- **Proof it works** — keep the images. If your own fixes changed what the
+  screen does, the existing captures are now stale evidence: say so in the
+  section and kick the PR back for fresh ones rather than shipping a pair that
+  no longer matches the code.
 - **Review findings** — what you found and fixed, one line each, with the
   reasoning behind anything non-obvious. Silence here after five passes of
   fixes is a lie.
@@ -181,6 +239,9 @@ and what still needs human eyes.
 ## Rules
 
 - **Take no context from outside the PR.** Independence is the whole product.
+- **No visual proof where visual proof was possible → kick it back.** Do not
+  review around it, do not capture it yourself, do not accept a description of a
+  screen in place of the screen.
 - **Fix, don't just complain.** Every finding gets a commit or a line in
   *Needs human eyes*.
 - **Never merge.** Never open a second PR. Never touch another branch.

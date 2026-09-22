@@ -1,6 +1,6 @@
 ---
 name: factory-implement
-description: Build one change in an isolated git worktree cut from fresh origin/<default>, prove it works with real evidence, open a PR carrying that proof, and babysit CI until green. Use when the `software-factory` controller dispatches the implement stage, or when the user asks to "do the work in a worktree", "implement this in isolation", or "build it and open a PR with proof". Does the work only — it never reviews, merges, or cleans up.
+description: Build one change in an isolated git worktree cut from fresh origin/<default>, prove it works with real evidence — before/after screenshots whenever the change is visible, text only when it is not — open a PR carrying that proof, and babysit CI until green. Also handles a `proof-kickback` from the review stage by going back and capturing the visual proof that was missing. Use when the `software-factory` controller dispatches the implement stage, or when the user asks to "do the work in a worktree", "implement this in isolation", or "build it and open a PR with proof". Does the work only — it never reviews, merges, or cleans up.
 ---
 
 # Factory: implement
@@ -27,6 +27,20 @@ This is the step that must not be improvised.
    under the home repo's working tree.
 
 Update the run-state file: `stage: "implement"`, `branch`, `worktree`.
+
+### Re-entry: a proof kickback
+
+If the controller dispatched you with `proof-kickback`, the branch, worktree,
+lock and PR already exist and are **yours** — that is not a collision, and step 1
+does not apply. Skip to the worktree you already own, capture the images the
+reviewer asked for (step 4), publish them to the proof branch, update the PR's
+*Proof it works* section, and hand back.
+
+Do not touch the implementation on a kickback unless capturing the proof reveals
+the change is actually broken — in which case fix it, say so, and say what the
+images showed. If the requested capture genuinely cannot be obtained, do not
+substitute prose for it: report back with the reason, in one sentence, and let
+the run surface to the user.
 
 ## 2. Understand before typing
 
@@ -60,25 +74,50 @@ No shortcuts. Specifically:
   restates the implementation line-for-line proves nothing; test observable
   behavior at the edges that actually break.
 
-## 4. Prove it works
+## 4. Prove it works — with pictures
 
 Build and run the project's own test suite (discover the commands — `CLAUDE.md`,
 README, `package.json`, `Makefile`, `*.csproj`). Fix until green; never proceed
 red.
 
-Then produce evidence matched to the change type, per the proof table in
-conventions:
+Then produce evidence, per conventions → *Verification is not optional*. The
+standard there is **visual proof first**: if a person could see this change by
+looking at the running software, the proof is before/after images, and a written
+description of them is not a substitute.
 
-- UI → before/after screenshots. The `run` skill knows how to launch this
-  project's app; use it rather than inventing a launch procedure.
-- API/route → real request and response, captured.
-- Bug fix → the test failing on the pre-fix commit, then passing on the fix.
-  Show both runs, not a claim about them.
-- Performance → numbers before and after, same machine, method stated.
+1. **Capture "before" first.** Launch the app on the pre-change state and
+   photograph the symptom or the old behavior. This is the capture that is
+   impossible to get later, so take it before you start typing — if you are
+   already mid-change, `git stash` and capture it, or check out the parent commit
+   in a scratch worktree.
+2. **Make the change, then capture "after"** — same view, same viewport, same
+   data, cropped to the area that changed.
+3. **One pair per distinct behavior**, named `before-<thing>.png` /
+   `after-<thing>.png` in `$SCRATCH/proof`. Use a short recording instead when
+   the change is motion, timing, or a sequence of interactions.
 
-Save artifacts in the session scratchpad, not the repo. Capture real output —
-never write down a result you did not watch happen. If a proof is impossible to
-get, say which and why; that goes in the PR.
+The `run` skill knows how to launch this project's app — use it rather than
+inventing a launch procedure. Never fabricate, mock up, or redraw a screen.
+
+Textual proof still accompanies the images where the proof table asks for it —
+a bug fix visible in the UI needs the screenshots **and** a test that fails
+before and passes after, shown as both runs.
+
+**Textual proof alone is only for changes with no visible surface at all**: a
+library internal, a build script, CI config, a pure refactor. Before you settle
+for it, look one layer out — a query fix that corrects a number on a page, an
+API fix that unbreaks a screen, and a crash fix all have a visible surface. If
+you conclude there is none, write that conclusion in the PR in one sentence with
+its reason; the review stage will test it and send the PR back if it does not
+hold.
+
+If the app exists but you could not launch it, that is an obstacle, not an
+absence of visual surface. Say exactly that, with the error, and report
+`blocked` if it stopped you from verifying the change at all.
+
+Publish the images to the run's proof branch (conventions → *Publishing proof
+images*) and record `proofBranch` in run state. Keep the originals in the
+scratchpad; never commit them to the PR branch.
 
 ## 5. Commit and push
 
@@ -101,8 +140,10 @@ gh pr create --base "$DEFAULT" --head "$BRANCH" \
 Body uses the five required sections (conventions → *PR body shape*). Two of
 them carry your real obligations:
 
-- **Proof it works** — the evidence from step 4, inline. Screenshots attached,
-  command output in fenced blocks.
+- **Proof it works** — the evidence from step 4, inline. Before/after images
+  embedded in a two-column table so they render side by side in the PR, command
+  output in fenced blocks beneath them. If there are no images, this section
+  opens with the one-sentence reason the change has no visible surface.
 - **Needs human eyes** — point at the specific code you are least sure about,
   as `path/file.ts:42`, with one line on *why* it is hard: concurrency, a
   guessed-at business rule, an unhappy path you could not exercise, a
@@ -133,7 +174,7 @@ controller, and nothing more:
 ```
 PR #118 — https://github.com/owner/repo/pull/118
 Branch Fix_42 · worktree C:/Code/.sf-worktrees/myapp/Fix_42 · checks green
-Proof: before/after screenshots, failing→passing test for the redirect loop
+Proof: before/after screenshots (sf-proof/Fix_42), failing→passing test for the redirect loop
 Needs human eyes: src/auth/session.ts:88 (token refresh race)
 ```
 
@@ -144,5 +185,9 @@ Needs human eyes: src/auth/session.ts:88 (token refresh race)
   and your self-assessment would contaminate it.
 - **Never** merge, never delete the worktree, never release the lock.
 - **Never** push to the default branch.
+- **Never describe a screen instead of showing it.** If the change is visible,
+  the PR carries the images; "verified manually in the browser" is not proof.
+- **Never fabricate an image** — no mockups, no drawings, no screenshot of a
+  different state relabelled. Every capture comes from a run you performed.
 - Report failures with their output. A stalled proof or a red check is
   information, not something to smooth over.
