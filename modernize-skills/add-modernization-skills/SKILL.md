@@ -62,7 +62,12 @@ correct; one that says "upgrade to v18" rots.
 
 ## 4. Write the skill
 
-Create `~/.claude/skills/modernize-<tech>/SKILL.md`. Match the structure of the
+Put the new skill beside the existing sub-skills. `~/.claude/skills/modernize-this`
+may be a junction into a skill set folder; resolve it, create
+`<that folder's parent>/modernize-<tech>/SKILL.md`, and if that parent is not the
+skills folder itself, junction it back in with `link-skills.ps1 -ImportDir <parent>`
+from the `upgrade-my-skills` skill's `scripts/`. Otherwise create
+`~/.claude/skills/modernize-<tech>/SKILL.md` directly. Match the structure of the
 existing sub-skills — read `~/.claude/skills/modernize-dotnet/SKILL.md` as the
 reference implementation. Required elements:
 

@@ -130,8 +130,8 @@ scripts/link-skills.ps1 -ImportDir <set folder>
 
 It junctions each skill into the skills folder, adds the junctions to the home
 repo's `.gitignore`, skips anything already taken, and is safe to re-run. With no
-arguments it relinks every set that has an `.upstream.json`, which is the fresh
-clone recovery step. Then check:
+arguments it relinks every set folder beside the skills folder (imported sets and
+the user's own), which is the fresh clone recovery step. Then check:
 
 - Every imported `SKILL.md` has frontmatter that parses and a `name` matching its
   folder (parse it with a YAML library; don't eyeball it).

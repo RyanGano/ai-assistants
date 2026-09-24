@@ -1,7 +1,8 @@
-# Junctions imported skill sets into the user-level skills folder. Safe to re-run.
+# Junctions skill sets into the user-level skills folder. Safe to re-run.
 #
-#   link-skills.ps1                      link every imported set (folders beside the
-#                                        skills folder that hold an .upstream.json)
+#   link-skills.ps1                      link every set: each folder beside the skills
+#                                        folder that holds skill folders, whether
+#                                        imported (.upstream.json) or my own
 #   link-skills.ps1 -ImportDir <path>    link one set
 #
 # The skills folder is ~/.claude/skills, or the folder it is a junction/symlink to.
@@ -18,7 +19,7 @@ $skillsDir = if ($item.LinkType) { (Resolve-Path ($item.Target | Select-Object -
 $root = Split-Path $skillsDir -Parent
 
 $sets = if ($ImportDir) { @(Get-Item (Resolve-Path $ImportDir)) }
-        else { Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName '.upstream.json') } }
+        else { Get-ChildItem $root -Directory | Where-Object { $_.FullName -ne $skillsDir -and (Get-ChildItem $_.FullName -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'SKILL.md') }) } }
 
 $gitignore = Join-Path $root '.gitignore'
 $inRepo = Test-Path (Join-Path $root '.git')
@@ -45,7 +46,7 @@ foreach ($set in $sets) {
 }
 
 if ($newIgnores) {
-    $block = @('', "# Junctions to imported skill sets (real files are tracked in the set's folder).") + $newIgnores
+    $block = @('', "# Junctions to skill sets (real files are tracked in the set's folder).") + $newIgnores
     Add-Content -Path $gitignore -Value $block -Encoding utf8
     Write-Host "gitignored $($newIgnores.Count) junction(s) in $gitignore"
 }

@@ -12,6 +12,8 @@ tracked file is Markdown that Claude Code reads as instructions.
 
 ```
 <author>-skills/        # imported skill sets (.upstream.json), junctioned into skills/
+software-factory-skills/  # my own skill sets, junctioned into skills/ the same way
+modernize-skills/
 skills/
   <skill-name>/
     SKILL.md            # required: frontmatter + instructions
@@ -28,10 +30,19 @@ set of skills imported from someone else's repo and ported to Claude Code by the
 `upgrade-my-skills` skill. The manifest pins the upstream commit and records every
 porting change; the set's `README.md` credits the source.
 
-Claude Code does not discover nested skill folders, so each imported skill is
-linked into `skills/` by a gitignored directory junction. Edit imported skills in
+## Own skill sets
+
+`software-factory-skills/` and `modernize-skills/` group my own related skills the
+same way, without an `.upstream.json`. Each set's `README.md` explains how its
+skills fit together.
+
+## Set junctions
+
+Claude Code does not discover nested skill folders, so each skill in a set is
+linked into `skills/` by a gitignored directory junction. Edit set skills in
 their set folder, never through the junction path in a commit. On a fresh clone,
-recreate every junction with `skills/upgrade-my-skills/scripts/link-skills.ps1`.
+recreate every junction with `skills/upgrade-my-skills/scripts/link-skills.ps1`;
+it links every folder beside `skills/` that holds skill folders.
 
 ## The junction — read this before moving files
 
@@ -65,7 +76,8 @@ Rules:
 
 ## Adding or editing a skill
 
-1. Create `skills/<kebab-case-name>/SKILL.md`.
+1. Create `skills/<kebab-case-name>/SKILL.md`, or `<set>/<kebab-case-name>/SKILL.md`
+   if it belongs to a set (then run `link-skills.ps1`).
 2. Give it YAML frontmatter with `name` (matching the directory) and a
    `description` that states both what the skill does and *when* to use it —
    the description is the only thing Claude sees when deciding whether to load

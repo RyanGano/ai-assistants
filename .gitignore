@@ -24,26 +24,27 @@ desktop.ini
 # ---------------------------------------------------------------------------
 synced/
 # ---------------------------------------------------------------------------
-# Junctions to poteto-skills/ (the real files are tracked there).
-# Recreate with poteto-skills/link-skills.ps1.
+# Junctions to skill sets. The real files are tracked in each set's folder.
+# Recreate with skills/upgrade-my-skills/scripts/link-skills.ps1.
 # ---------------------------------------------------------------------------
-skills/automate-me
-skills/blast-radius
-skills/create-verification-skill
-skills/how
-skills/no-comments
-skills/principle-attack-the-premise
-skills/principle-laziness-protocol
-skills/principle-never-block-on-the-human
-skills/principle-prove-it-works
-skills/principle-test-behavior-not-implementation
-skills/reflect
-skills/teach
-skills/typescript-best-practices
-skills/unslop
-skills/why
+# poteto-skills/
+skills/automate-me/
+skills/blast-radius/
+skills/create-verification-skill/
+skills/how/
+skills/no-comments/
+skills/principle-attack-the-premise/
+skills/principle-laziness-protocol/
+skills/principle-never-block-on-the-human/
+skills/principle-prove-it-works/
+skills/principle-test-behavior-not-implementation/
+skills/reflect/
+skills/teach/
+skills/typescript-best-practices/
+skills/unslop/
+skills/why/
 
-# Junctions to imported skill sets (real files are tracked in the set's folder).
+# mattpocock-skills/
 skills/codebase-design/
 skills/diagnosing-bugs/
 skills/domain-modeling/
@@ -52,3 +53,22 @@ skills/grilling/
 skills/tdd/
 skills/wizard/
 skills/writing-for-agents/
+
+# software-factory-skills/
+skills/software-factory/
+skills/factory-implement/
+skills/factory-review/
+skills/factory-handoff/
+skills/factory-land/
+
+# modernize-skills/
+skills/modernize-this/
+skills/modernize-dotnet/
+skills/modernize-csharp/
+skills/modernize-blazor/
+skills/modernize-react/
+skills/modernize-typescript/
+skills/modernize-node-tooling/
+skills/modernize-use-npm/
+skills/modernize-github-actions/
+skills/add-modernization-skills/
