@@ -41,10 +41,12 @@ that evidence is images (conventions → *Visual proof first*).
 - **Look at the images.** Open the PR and confirm they render, that the pair
   shows the screen the change actually affects, and that "before" and "after"
   differ in the way the PR claims. An image that does not load is not proof.
-- **No images?** Then the PR must say, in one sentence, why the change has no
-  visible surface — and that claim has to survive a glance at the diff. Review
-  should have caught this; if it reached you anyway, say so in the headline and
-  tell the user the proof gate was not met.
+- **Images marked `Captured by review`?** The reviewer supplied proof the
+  builder skipped. Treat them like any other capture and check that they show
+  what the diff changes. Mention in the verdict that review produced them.
+- **No images?** Then the PR must say concretely why the change has no visible
+  surface, or why nobody could capture it (with the error). That claim has to
+  survive a glance at the diff. If it does not, say so in the headline.
 - Textual evidence alongside: a test run quoted should exist, a route exercised
   should exist. Quoted output that corresponds to nothing in the diff is a
   finding.
@@ -59,6 +61,11 @@ in the browser". Say so rather than passing it along.
 An empty risk list on a non-trivial change is itself a risk: it usually means the
 review looked for typos rather than for trouble.
 
+Each escalation (an issue review chose not to fix) must say why it was not
+fixed and what review recommends. If one is missing either part, point that out
+in your report. Also flag an escalation that review obviously could have fixed
+itself, because that is work pushed onto the user.
+
 Cross-check it against the diff: anything you would want a human to look at that
 the PR does not mention gets added to your report (not to the PR — you do not
 edit it).
@@ -70,15 +77,22 @@ One compact block, no preamble:
 ```
 **#118 — Fix login redirect loop** · https://github.com/owner/repo/pull/118
 
-Status      Green · 3 review passes · confidence 8/10
+Status      Green · 1 full pass + 2 delta checks · confidence <n>/10 · review says merge
 Matches ask Yes — redirect loop fixed at the session layer
 Proof       Before/after screenshots (render OK), failing→passing test (session.concurrent)
-Human eyes  src/auth/session.ts:88 — token-refresh race, fixed but subtle
-            src/auth/session.ts:120 — 30s refresh window is a guess, confirm
 Scope       +1 unrelated fix (stale import cleanup) in its own commit
 
-**Recommendation: merge after checking the 30s window.**
+Decide
+  1. [should-fix] src/auth/session.ts:120 — 30s refresh window is a guess.
+     Not fixed: no stated token lifetime. Review recommends: 60s, matching the IdP default.
+Check
+  - src/auth/session.ts:88 — token-refresh race, fixed but subtle
+
+**Recommendation: merge after deciding item 1.**
 ```
+
+List the escalations under **Decide** and number them, so the user can answer
+in a word ("take 1", "leave 1"). Each one shows review's recommendation.
 
 The recommendation is one of:
 
@@ -101,8 +115,8 @@ check are the three the audit covers:
 - The proof is present and spot-checks out — including the images, where the
   change has a visible surface.
 
-Plus the two carried in run state: confidence **9/10 or better**, and review
-finished within five passes.
+Plus the two carried in run state: confidence **9/10 or better**, and review's
+recommendation is **Merge**.
 
 **All gates hold** → record `autoMergeDecision: "merged"`, tell the controller to
 run `factory-land` in auto mode, and state plainly that it is going in unreviewed:
@@ -144,10 +158,13 @@ Outcomes:
 
 - **Approved** (GitHub approval, or the user saying so here) → set run state
   `stage: "land"` and tell the controller to run `factory-land`.
-- **Comments or change requests** → collect every unresolved thread
-  (`gh pr view <N> --comments`, plus review threads) and hand them to the
-  controller for a **fresh** `factory-review` agent. Pass the comments and the PR
-  number — nothing else. Then this stage runs again on the result.
+- **Comments, change requests, or decisions on the Decide items**: collect
+  every unresolved thread (`gh pr view <N> --comments`, plus review threads)
+  and the user's decisions. Hand them to the controller as a **scoped
+  follow-up**. The controller resumes the existing review agent (or the builder,
+  for rework too big for review), and only the resulting change is reviewed.
+  Pass the comments and decisions, and nothing else. When it comes back,
+  re-audit only what changed and whether it moves the verdict.
 - **Rejected / abandoned** → tell the controller to run the cleanup half of
   `factory-land`, so no worktree, branch or lock is left behind.
 

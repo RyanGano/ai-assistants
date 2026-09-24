@@ -1,12 +1,13 @@
 ---
 name: factory-implement
-description: Build one change in an isolated git worktree cut from fresh origin/<default>, prove it works with real evidence — before/after screenshots whenever the change is visible, text only when it is not — open a PR carrying that proof, and babysit CI until green. Also handles a `proof-kickback` from the review stage by going back and capturing the visual proof that was missing. Use when the `software-factory` controller dispatches the implement stage, or when the user asks to "do the work in a worktree", "implement this in isolation", or "build it and open a PR with proof". Does the work only — it never reviews, merges, or cleans up.
+description: Build one change in an isolated git worktree cut from fresh origin/<default>, prove it works with real evidence — before/after screenshots whenever the change is visible, text only when it is not — open a PR carrying that proof (or a concrete reason there is none), and hand it straight to review without waiting on CI. The controller can resume it to rework the PR after the user decides on a review escalation. Use when the `software-factory` controller dispatches the implement stage, or when the user asks to "do the work in a worktree", "implement this in isolation", or "build it and open a PR with proof". Does the work only — it never reviews, merges, or cleans up.
 ---
 
 # Factory: implement
 
 You build the change. You do not review it, merge it, or delete anything. When
-the PR is open and CI is green, you hand the PR number back and stop.
+the PR is open, you hand the PR number back and stop. From there, review owns
+CI.
 
 **Read `~/.claude/skills/software-factory/references/conventions.md` first** —
 branch names, worktree layout, locking, run state, proof standards and PR shape
@@ -28,19 +29,21 @@ This is the step that must not be improvised.
 
 Update the run-state file: `stage: "implement"`, `branch`, `worktree`.
 
-### Re-entry: a proof kickback
+### Re-entry: rework after the handoff
 
-If the controller dispatched you with `proof-kickback`, the branch, worktree,
-lock and PR already exist and are **yours** — that is not a collision, and step 1
-does not apply. Skip to the worktree you already own, capture the images the
-reviewer asked for (step 4), publish them to the proof branch, update the PR's
-*Proof it works* section, and hand back.
+Sometimes the user decides that a review escalation needs rework too big for the
+reviewer, such as a redesign or a new approach. The controller then normally
+**resumes you** (same agent, context intact) instead of starting a fresh
+builder. The branch, worktree, lock and PR already exist and are **yours**. That
+is not a collision, and step 1 does not apply.
 
-Do not touch the implementation on a kickback unless capturing the proof reveals
-the change is actually broken — in which case fix it, say so, and say what the
-images showed. If the requested capture genuinely cannot be obtained, do not
-substitute prose for it: report back with the reason, in one sentence, and let
-the run surface to the user.
+Review worked in this same worktree and squashed the history. Before you touch
+anything, confirm `git status` is clean and `HEAD` matches `origin/<branch>`
+(`git fetch origin` first). Do not reset or pull over a mismatch. Report it.
+Make only
+the change you were asked for, run the tests, and update *Proof it works* if the
+change is visible. Push once and hand back with the new head SHA. Review checks
+that delta. Do not re-open anything else.
 
 ## 2. Understand before typing
 
@@ -106,14 +109,19 @@ before and passes after, shown as both runs.
 **Textual proof alone is only for changes with no visible surface at all**: a
 library internal, a build script, CI config, a pure refactor. Before you settle
 for it, look one layer out — a query fix that corrects a number on a page, an
-API fix that unbreaks a screen, and a crash fix all have a visible surface. If
-you conclude there is none, write that conclusion in the PR in one sentence with
-its reason; the review stage will test it and send the PR back if it does not
-hold.
+API fix that unbreaks a screen, and a crash fix all have a visible surface.
+
+If you conclude there is none, the PR must say why, concretely: what the change
+touches and why nothing it affects reaches a screen (for example "build script
+only — changes the CI cache key; no runtime code touched"). "Internal change" or
+"no UI" alone is not a reason. Review tests the claim. If the claim is wrong,
+review captures the images itself and records that you skipped proof you could
+have given, so skipping it saves nothing.
 
 If the app exists but you could not launch it, that is an obstacle, not an
-absence of visual surface. Say exactly that, with the error, and report
-`blocked` if it stopped you from verifying the change at all.
+absence of visual surface. Say exactly that in the PR, with the error and what
+you tried, and report `blocked` if it stopped you from verifying the change at
+all.
 
 Publish the images to the run's proof branch (conventions → *Publishing proof
 images*) and record `proofBranch` in run state. Keep the originals in the
@@ -154,29 +162,24 @@ message explain it; the reviewer will find it from there.
 Include `Closes #<issue>` when there is an issue. Open it as a normal PR — the
 review stage runs next, and drafts block some CI setups.
 
-## 7. Babysit CI
+## 7. Hand back — do not wait on CI
 
-```bash
-gh pr checks <PR> --watch
-```
-
-If a check fails: read the actual log (`gh run view <id> --log-failed`), fix the
-cause in the worktree, push, and re-watch. Repeat until green.
-
-Failures that are the server's and not yours (flaky runner, expired credential,
-unrelated broken workflow) do not get papered over: report them as `blocked`
-rather than disabling the check, retrying forever, or editing CI to pass.
-
-## 8. Hand back
+Your local build and test run is the bar. Do **not** run `gh pr checks --watch`.
+Review starts immediately and fixes anything CI turns up along with its other
+findings. It watches CI once at the end, after its own push. Waiting here would
+pay for a CI run that review's push replaces anyway.
 
 Update run state: `pr`, `prUrl`, `stage: "review"`. Then report to the
 controller, and nothing more:
 
 ```
 PR #118 — https://github.com/owner/repo/pull/118
-Branch Fix_42 · worktree C:/Code/.sf-worktrees/myapp/Fix_42 · checks green
+Branch Fix_42 · worktree C:/Code/.sf-worktrees/myapp/Fix_42 · local tests green · head d4e5f6a
 Proof: before/after screenshots (sf-proof/Fix_42), failing→passing test for the redirect loop
 ```
+
+Stay available afterwards. The controller may resume you for rework instead of
+starting a new builder.
 
 ## Rules
 
@@ -190,5 +193,6 @@ Proof: before/after screenshots (sf-proof/Fix_42), failing→passing test for th
   the PR carries the images; "verified manually in the browser" is not proof.
 - **Never fabricate an image** — no mockups, no drawings, no screenshot of a
   different state relabelled. Every capture comes from a run you performed.
-- Report failures with their output. A stalled proof or a red check is
+- **Never skip visual proof without a concrete reason** written in the PR.
+- Report failures with their output. A stalled proof or a red test is
   information, not something to smooth over.

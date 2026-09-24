@@ -97,8 +97,12 @@ the worktree being deleted:
   "prUrl": "https://github.com/owner/repo/pull/118",
   "proofBranch": "sf-proof/Fix_42",
   "stage": "implement | review | handoff | land | done | blocked",
-  "reviewPasses": 2,
-  "kickbacks": 0,
+  "fullPasses": 1,
+  "deltaChecks": 2,
+  "reviewRecommendation": "merge | do not merge: <reason>",
+  "reviewedSha": "a1b2c3d",
+  "implementAgentId": "agent-…",
+  "reviewAgentId": "agent-…",
   "confidence": 8,
   "autoMerge": false,
   "autoMergeDecision": null,
@@ -108,7 +112,13 @@ the worktree being deleted:
 
 Every stage reads this file on entry and writes it on exit. It is the handoff
 contract — stage agents return a summary to the controller, but the file is the
-source of truth.
+source of truth. `factory-review` is the exception: it never reads run state,
+and the controller records its results for it.
+
+`implementAgentId` and `reviewAgentId` let the controller **resume** those
+agents with their context intact (`SendMessage`) instead of paying for a cold
+start every time a stage has to run again. `reviewedSha` is the head the
+reviewer last signed off on. A follow-up review starts its delta there.
 
 ## Auto-merge gate
 
@@ -123,7 +133,7 @@ Auto-merge fires **only when every one of these is true**:
 | --- | --- | --- |
 | `autoMerge: true` for this run | all | the user's words on this run |
 | Confidence is **9/10 or better** | `factory-review` | review's own score |
-| Review finished **within** five passes, not unresolvable | `factory-review` | run state |
+| Review recommends **Merge** | `factory-review` | run state |
 | *Needs human eyes* is `None.` | `factory-handoff` | PR body |
 | PR does what the task statement asked, nothing more | `factory-handoff` | the audit |
 | Proof is present and spot-checks out | `factory-handoff` | the audit |
@@ -154,6 +164,34 @@ Two deliberate properties of this design:
   reviewer under pressure to score something other than the truth — and the
   pressure is sharper at 9 than at 10, because 9 is a score it might plausibly
   reach. Do not mention the mode to it, in the spawn prompt or anywhere else.
+
+## Review economy
+
+Review is where runs used to burn 30 to 40 minutes: fix one small thing, run a
+full review again, find one more small thing, and repeat. These rules exist to
+stop that loop. `factory-review` has the details.
+
+- **Fix in place.** A reviewer that can see the right fix makes it. Nothing
+  fixable goes back to the builder.
+- **Escalate with a recommendation.** Whatever the reviewer will not fix goes to
+  the human as a list. Each item gives the location, the problem, *why it was
+  not fixed*, *what the reviewer would do*, and a severity.
+- **One full pass, then deltas.** After each round of fixes, the reviewer
+  checks only `git diff <last check>..HEAD`. Several small delta checks are
+  fine. A full pass is repeated only when what changed was large, changed the
+  design, or touched high-risk logic (money, auth, security, concurrency,
+  persistence, data loss), never for a trivial fix. There is no fixed pass
+  count. Every re-review has to be justified by what changed, and churn in one
+  area is escalated instead of looped on.
+- **Always finish.** Even a PR that should not merge comes back with coherent
+  commits, a rewritten description, a green build, and a clear **Merge** or
+  **Do not merge** recommendation.
+- **Size the review to the change.** A copy fix gets a glance. A billing rewrite
+  gets depth.
+- **Push once.** The builder hands off without waiting on CI. The reviewer
+  commits locally, squashes, pushes once, and watches CI once.
+- **Follow-ups are scoped.** User comments, escalation decisions and later
+  commits get a review of that change only, by the same agent, resumed.
 
 ## Verification is not optional
 
@@ -257,24 +295,30 @@ The proof branch outlives the merge, so the PR keeps rendering forever;
 `factory-land` deletes the run's feature branch and leaves the proof branch
 alone.
 
-### Missing visual proof goes back to the builder
+### Missing visual proof: review supplies it
 
-A PR that *could* carry visual proof and does not is not reviewable, and the
-reviewer does not quietly capture the images itself — that would make the
-reviewer the author of the evidence it is supposed to judge.
+The builder owes visual proof whenever the change is visible. If it skips the
+proof, it owes a **concrete reason** in the PR. A PR without proof is never sent back
+to the builder for pictures. That round trip cost a cold builder plus a
+from-scratch review, just to add images.
 
-`factory-review` stops and reports `proof-kickback`, naming the exact captures
-it wants. The controller re-dispatches `factory-implement` on the same branch and
-worktree to produce them, and review then starts over from scratch.
+Instead, `factory-review` judges proof against the final code, after its own
+fixes:
 
-- Increment `kickbacks` in run state on each one.
-- **Two kickbacks maximum.** If the third review still finds the proof missing,
-  the run goes to the user with `Proof: none — <reason>` as the headline rather
-  than looping further.
-- A kickback is not a review pass; `reviewPasses` starts again from zero when
-  review restarts.
-- The kickback message stays PR-shaped — what is missing and what to capture,
-  never why the change was made or who asked for it.
+- If images are missing and the change is visible, the reviewer captures them
+  itself, publishes them to the proof branch, and marks them
+  `Captured by review` in the PR. The builder's omission, and whether its reason
+  held up, goes under *Review findings*.
+- If the reviewer's fixes changed what the screen shows, it recaptures the
+  "after" image itself.
+- If nobody can capture them (the app will not start), *Proof it works* says so
+  with the error. *Needs human eyes* then tells the human exactly what to look
+  at.
+- Images are evidence, not a gate. The reviewer decides whether the change works
+  from everything it has, with or without them.
+
+Because reviewer-captured images are labelled, `factory-handoff` and the user
+always know who produced the evidence they are looking at.
 
 ## Commits
 
@@ -301,9 +345,13 @@ Markdown. The sections are split by stage:
 
 - **Proof it works** — the evidence from the table above, inline.
 - **Review findings** — what review found and fixed, one line each.
-- **Needs human eyes** — specific `file.ts:42` links to subtle or risky code, or
-  `None.` Never leave it empty.
-- **Confidence** — `x/10` plus one sentence on what caps it.
+- **Needs human eyes** — first the escalations (issues review did not fix: the
+  location, the problem, *Not fixed because*, *Recommendation*, and a severity
+  of blocking, should-fix or minor), then specific `file.ts:42` pointers to
+  fixed-but-subtle code. Or `None.` Never leave it empty.
+- **Confidence** — `x/10`, one sentence on what caps it, and
+  `Reviewed through <sha>`. Ends with review's bold **Merge** or **Do not
+  merge** recommendation and its reason.
 
 The implementer never writes the last three. Review is the gate on whether a PR
 is complete and mergeable, and a risk list handed to it by the author gets
@@ -319,7 +367,7 @@ alone.
 | Stage | Must not |
 | --- | --- |
 | `factory-implement` | Review its own work adversarially, merge, delete worktrees, or touch another run's branch |
-| `factory-review` | Know anything about the run beyond the PR itself; merge; open new PRs; capture the missing proof itself instead of kicking the PR back |
+| `factory-review` | Know anything about the run beyond the PR itself; merge; open new PRs; send fixable work back to the builder; re-review untouched code on a follow-up |
 | `factory-handoff` | Change code, push, or merge |
 | `factory-land` | Merge anything unapproved or red; land a PR it also reviewed |
 
