@@ -4,6 +4,41 @@ A selection of skills from [pstack](https://github.com/cursor/plugins/tree/main/
 Lauren Tan's (poteto) skill pack for Cursor, ported to run in Claude Code. MIT
 licensed; see [LICENSE](LICENSE).
 
+## Origin
+
+| | |
+| --- | --- |
+| Author | Lauren Tan ([@poteto](https://github.com/poteto)) |
+| Source | [`cursor/plugins`](https://github.com/cursor/plugins), `pstack/skills/` |
+| Upstream commit | [`12d587d`](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills) (2026-09-23) |
+| License | MIT, copyright 2026 Lauren Tan ([LICENSE](LICENSE)) |
+
+Each folder here is a copy of the upstream folder with the same name, plus the
+Claude Code changes listed under [Changes from upstream](#changes-from-upstream).
+The Comment Sicko prompt in `no-comments/references/` comes from upstream's
+[`pstack/agents/comment-sicko.md`](https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/agents/comment-sicko.md).
+
+| Skill | Upstream |
+| --- | --- |
+| `automate-me` | [pstack/skills/automate-me](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/automate-me) |
+| `blast-radius` | [pstack/skills/blast-radius](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/blast-radius) |
+| `create-verification-skill` | [pstack/skills/create-verification-skill](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/create-verification-skill) |
+| `how` | [pstack/skills/how](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/how) |
+| `no-comments` | [pstack/skills/no-comments](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/no-comments) |
+| `principle-attack-the-premise` | [pstack/skills/principle-attack-the-premise](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/principle-attack-the-premise) |
+| `principle-laziness-protocol` | [pstack/skills/principle-laziness-protocol](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/principle-laziness-protocol) |
+| `principle-never-block-on-the-human` | [pstack/skills/principle-never-block-on-the-human](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/principle-never-block-on-the-human) |
+| `principle-prove-it-works` | [pstack/skills/principle-prove-it-works](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/principle-prove-it-works) |
+| `principle-test-behavior-not-implementation` | [pstack/skills/principle-test-behavior-not-implementation](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/principle-test-behavior-not-implementation) |
+| `reflect` | [pstack/skills/reflect](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/reflect) |
+| `teach` | [pstack/skills/teach](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/teach) |
+| `typescript-best-practices` | [pstack/skills/typescript-best-practices](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/typescript-best-practices) |
+| `unslop` | [pstack/skills/unslop](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/unslop) |
+| `why` | [pstack/skills/why](https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/why) |
+
+To pull in upstream changes later, diff these folders against a newer pstack
+commit and re-apply the Claude Code changes below.
+
 ## How they load
 
 Claude Code only discovers skills one level under a `skills/` directory, so these
