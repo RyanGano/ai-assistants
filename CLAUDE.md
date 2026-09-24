@@ -11,7 +11,7 @@ tracked file is Markdown that Claude Code reads as instructions.
 ## Layout
 
 ```
-poteto-skills/          # ported pstack skills, junctioned into skills/
+<author>-skills/        # imported skill sets (.upstream.json), junctioned into skills/
 skills/
   <skill-name>/
     SKILL.md            # required: frontmatter + instructions
@@ -21,14 +21,17 @@ CLAUDE.md
 README.md
 ```
 
-## poteto-skills
+## Imported skill sets
 
-`poteto-skills/` holds skills ported from poteto's pstack (MIT). Claude Code does
-not discover nested skill folders, so each one is linked into `skills/` by a
-gitignored directory junction. Edit them in `poteto-skills/`, never through the
-junction path in a commit. After adding a skill there, or on a fresh clone, run
-`poteto-skills/link-skills.ps1` and add the new `skills/<name>` line to
-`.gitignore`. See `poteto-skills/README.md` for what changed from upstream.
+A folder at the repo root with an `.upstream.json` (such as `poteto-skills/`) is a
+set of skills imported from someone else's repo and ported to Claude Code by the
+`upgrade-my-skills` skill. The manifest pins the upstream commit and records every
+porting change; the set's `README.md` credits the source.
+
+Claude Code does not discover nested skill folders, so each imported skill is
+linked into `skills/` by a gitignored directory junction. Edit imported skills in
+their set folder, never through the junction path in a commit. On a fresh clone,
+recreate every junction with `skills/upgrade-my-skills/scripts/link-skills.ps1`.
 
 ## The junction — read this before moving files
 

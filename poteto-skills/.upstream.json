@@ -1,0 +1,124 @@
+{
+  "source": "https://github.com/cursor/plugins/tree/main/pstack/skills",
+  "repo": "cursor/plugins",
+  "path": "pstack/skills",
+  "commit": "12d587dfb20741cafc376c42c696c5f6e2a64487",
+  "license": "MIT",
+  "imported": "2026-09-24",
+  "skills": {
+    "automate-me": {
+      "upstream": "pstack/skills/automate-me",
+      "changes": [
+        "Transcript mining reads ~/.claude/projects (current project by default) and optionally VS Code Copilot history",
+        "AskQuestion became AskUserQuestion",
+        "create-skill became skill-creator",
+        ".cursor/skills paths became .claude/skills",
+        "poteto-mode reference links upstream"
+      ]
+    },
+    "blast-radius": {
+      "upstream": "pstack/skills/blast-radius",
+      "changes": [
+        "arena step became 2-3 independent general-purpose subagents"
+      ]
+    },
+    "create-verification-skill": {
+      "upstream": "pstack/skills/create-verification-skill",
+      "changes": [
+        ".cursor/skills became .claude/skills",
+        "Drive recipe names Claude Code browser/preview tools",
+        "maintain-verification-skill pointer replaced with an inline maintenance note"
+      ]
+    },
+    "how": {
+      "upstream": "pstack/skills/how",
+      "changes": [
+        "Task tool and per-role model routing became the Agent tool with the session model",
+        "Explorers use the Explore agent type",
+        "Auto-invocable"
+      ]
+    },
+    "no-comments": {
+      "upstream": "pstack/skills/no-comments",
+      "changes": [
+        "Comment Sicko agent became references/comment-sicko.md run on general-purpose",
+        "architect and principle skill references inlined"
+      ],
+      "extra_upstream": [
+        "pstack/agents/comment-sicko.md"
+      ]
+    },
+    "principle-attack-the-premise": {
+      "upstream": "pstack/skills/principle-attack-the-premise",
+      "changes": [
+        "Links to non-imported principles inlined",
+        "Auto-invocable"
+      ]
+    },
+    "principle-laziness-protocol": {
+      "upstream": "pstack/skills/principle-laziness-protocol",
+      "changes": [
+        "Auto-invocable"
+      ]
+    },
+    "principle-never-block-on-the-human": {
+      "upstream": "pstack/skills/principle-never-block-on-the-human",
+      "changes": [
+        "Auto-invocable"
+      ]
+    },
+    "principle-prove-it-works": {
+      "upstream": "pstack/skills/principle-prove-it-works",
+      "changes": [
+        "show-me-your-work reference dropped",
+        "Auto-invocable"
+      ]
+    },
+    "principle-test-behavior-not-implementation": {
+      "upstream": "pstack/skills/principle-test-behavior-not-implementation",
+      "changes": [
+        "Auto-invocable"
+      ]
+    },
+    "reflect": {
+      "upstream": "pstack/skills/reflect",
+      "changes": [
+        "Task tool and per-role model routing became the Agent tool with the session model",
+        "Transcript location became ~/.claude/projects",
+        "create-skill became skill-creator",
+        "Backlog offered as GitHub issues"
+      ]
+    },
+    "teach": {
+      "upstream": "pstack/skills/teach",
+      "changes": [
+        "Image generation replaced with inline visual or ASCII diagrams",
+        "Auto-invocable"
+      ]
+    },
+    "typescript-best-practices": {
+      "upstream": "pstack/skills/typescript-best-practices",
+      "changes": [
+        "type-system-discipline and boundary-discipline references inlined",
+        "Auto-invocable"
+      ]
+    },
+    "unslop": {
+      "upstream": "pstack/skills/unslop",
+      "changes": [
+        "Description narrowed from 'Must always apply' to prose meant for people",
+        "Auto-invocable"
+      ]
+    },
+    "why": {
+      "upstream": "pstack/skills/why",
+      "changes": [
+        "Task tool and per-role model routing became the Agent tool with the session model",
+        "MCP discovery uses mcp__<server>__<tool> names",
+        "Description excludes questions about the agent's own edits",
+        "Auto-invocable",
+        "Imported as a dependency of teach"
+      ]
+    }
+  }
+}

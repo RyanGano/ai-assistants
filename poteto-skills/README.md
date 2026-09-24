@@ -44,10 +44,13 @@ commit and re-apply the Claude Code changes below.
 Claude Code only discovers skills one level under a `skills/` directory, so these
 folders are not found where they sit. Each one has a directory junction in
 `../skills/<name>` pointing back here, and `~/.claude/skills` is itself a junction
-to `../skills`. The junctions are gitignored. After a fresh clone, recreate them:
+to `../skills`. The junctions are gitignored. [`.upstream.json`](.upstream.json)
+pins the upstream commit and lists each skill's porting changes, which is what
+`/upgrade-my-skills` reads to update this set. After a fresh clone, recreate the
+junctions for every imported set:
 
 ```powershell
-./poteto-skills/link-skills.ps1
+./skills/upgrade-my-skills/scripts/link-skills.ps1
 ```
 
 ## Skills

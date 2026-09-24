@@ -61,6 +61,13 @@ task-by-task for easy review.
 | [`modernize-github-actions`](skills/modernize-github-actions) | Action versions, runner images, caching, permissions, concurrency, deprecated syntax. |
 | [`add-modernization-skills`](skills/add-modernization-skills) | Finds technologies with no matching `modernize-*` skill and writes the missing ones. |
 
+### Skills from other people
+
+| Skill | What it does |
+| --- | --- |
+| [`upgrade-my-skills`](skills/upgrade-my-skills) | `/upgrade-my-skills from <github-url>` audits my Claude Code and VS Code history against another repo's skills, recommends a ranked batch, then imports my picks into a `<author>-skills/` folder, ports them to Claude Code, and junctions them into `skills/`. Re-run it on the same repo to pull upstream updates. |
+| [`poteto-skills/`](poteto-skills) | 15 skills from poteto's [pstack](https://github.com/cursor/plugins/tree/main/pstack/skills), imported this way. |
+
 ## Installing
 
 Clone the repo, then point Claude Code's user skills directory at it. On Windows:
