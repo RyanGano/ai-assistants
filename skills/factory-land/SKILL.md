@@ -131,7 +131,7 @@ After an **auto-merge**, say so in the first line and link the diff, so an
 unattended merge is obvious in the transcript rather than buried:
 
 ```
-#118 AUTO-MERGED unreviewed (squash) · 9/10 · issue #42 closed
+#118 AUTO-MERGED unreviewed (squash) · <n>/10 · issue #42 closed
 Diff: https://github.com/owner/repo/pull/118/files
 Worktree removed, branch Fix_42 deleted local+remote, lock released
 main now at a1b2c3d
@@ -139,11 +139,11 @@ main now at a1b2c3d
 
 ## Cleanup-only mode
 
-When a run is abandoned, rejected, or declared unresolvable, this skill is
-invoked for step 4 alone. Then:
+When a run is abandoned or rejected (including a "do not merge" PR the user
+closes), this skill is invoked for step 4 alone. Then:
 
 - Do **not** merge, and do not delete the remote branch or close the PR unless
-  the user asked — an unresolvable PR's branch is the input to the rewrite.
+  the user asked. A rejected PR's branch is the input to any rewrite.
 - Do remove the worktree, prune, and release the lock, so the slug can be used
   again.
 - Say plainly what was kept and what was destroyed.

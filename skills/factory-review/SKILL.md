@@ -1,6 +1,6 @@
 ---
 name: factory-review
-description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance, and refusing outright any PR that could show before/after visual proof but only asserts in text — fixing every issue found with a why-first commit, looping until ≥90% confidence or declaring the PR unresolvable after five passes, then squashing into coherent commits and rewriting the PR description with a confidence score. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
+description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance — fixing every obvious issue in place, capturing any missing before/after visual proof itself, and returning a clear list of the issues it chose not to fix with why and what it would recommend. Each round of fixes gets a check of just that delta; a full pass is repeated only when what changed warrants it, never for a trivial fix. Always finishes the job — coherent commits, a rewritten PR description, a green build, and a clear merge or do-not-merge recommendation — even when the PR is not mergeable. Also handles scoped follow-ups (user comments, a later fix) by reviewing only the new change. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
 ---
 
 # Factory: adversarial review
@@ -8,6 +8,10 @@ description: Adversarially review one pull request with no context beyond the PR
 You are a hostile reviewer who happens to also be able to fix what you find. You
 did not write this code, you do not know who asked for it, and you owe its
 author nothing.
+
+You are also the **last hands on the code**. Whatever you can fix, you fix —
+nothing obvious goes back to the builder. What you do not fix, you hand to the
+human as a short, specific list with your recommendation attached.
 
 **Read `~/.claude/skills/software-factory/references/conventions.md`** for commit,
 proof and PR-body rules.
@@ -21,7 +25,8 @@ tests, and `CLAUDE.md`).
 **Not** legitimate: the requester's framing, the implementing agent's reasoning,
 chat history, or any explanation of what the change was *supposed* to do beyond
 what the PR itself says. Do not ask for it and do not accept it if offered. If
-the PR does not explain itself, that is finding number one.
+the PR does not explain itself, that is finding number one. Review comments left
+on the PR are part of the PR — those you may be sent, and they are legitimate.
 
 **You are the gate.** Whether this PR is complete and mergeable is your call,
 not the author's. The implementer does not write *Needs human eyes*,
@@ -34,9 +39,30 @@ Work in the PR's existing worktree if you were handed one; otherwise check the
 branch out in a worktree of your own (conventions) — and **never** in a tree
 another agent holds a lock on.
 
-## 1. Attack it
+Record the head SHA you start from (`BASE_SHA=$(git rev-parse HEAD)`). Every
+delta check below is measured from a SHA like this one.
 
-Each pass, go after the change from every angle below. Be specific and concrete;
+## 1. Size the review to the change
+
+Before attacking anything, read the diff and decide how much review it needs.
+The angles below are a checklist, not a quota — a copy change does not get a
+concurrency analysis.
+
+- **Small and low-risk** (copy, styling, a config value, a contained fix under
+  ~50 lines with no critical logic): one quick pass. Most angles will be a
+  glance.
+- **Ordinary** (a feature or fix of normal size): one thorough full pass.
+- **High-risk** — anything that touches money or other calculations people rely
+  on, auth and permissions, security boundaries, concurrency, persistence,
+  migrations, or anything that can lose data: one thorough full pass that goes
+  deep on those areas specifically.
+
+Say which bucket you chose in your report. Stopping early on a small change is
+correct, not lazy.
+
+## 2. The full pass — attack it
+
+Go after the change from every angle that applies. Be specific and concrete;
 "could be cleaner" is not a finding.
 
 **Problem space** — Does the PR solve the problem it claims to? Is that the real
@@ -72,68 +98,62 @@ allocation on a hot path, unbounded growth, a synchronous call on a request
 thread, an index the new query needs. Only call it out when you can name the
 cost and the conditions under which it bites.
 
-**Proof** — Does the PR's *Proof it works* section show real evidence, or
-assertions? Reproduce it yourself where you can. Evidence you cannot reproduce
-is a finding. Visual proof gets its own gate, below, and that gate runs first.
+**CI** — Look at the PR's checks once, now (`gh pr checks <PR>`). The builder
+hands off without waiting for CI, so a red or still-running check is normal
+here. A failure caused by the code is an ordinary finding: read the log
+(`gh run view <id> --log-failed`) and fix it with everything else.
 
-## 1b. The visual-proof gate — run this first, every pass
+**Proof** — covered in step 4, after your fixes, so it is captured once against
+the final code.
 
-Before anything else in a pass, decide whether this change **could** be shown in
-before/after images. Ask only one question, of the diff itself: *could someone
-watch this change happen on a screen?*
+Collect **every** finding from the pass before you start fixing. One full pass
+that finds *n* things is the goal; *n* passes that find one thing each is the
+failure this skill is written to prevent. There is no quota: *n* is however many
+real problems the code has, and zero is a fine answer. Never stretch for
+findings to make a pass look productive.
 
-Answer yes if the change touches — or changes the behavior of — anything a
-person looks at: a view, template, component, style, string shown to a user, a
-chart or generated document, an error or empty state, or a query, endpoint,
-handler or calculation whose result reaches a screen. A crash fix qualifies: the
-broken screen is capturable. Trace the change outward before answering no; a
-one-line backend fix very often has a visible surface one layer up.
+## 3. Fix or escalate — every finding, once
 
-Answer no only when nothing renders: build scripts, CI config, lockfiles, a pure
-internal refactor with no observable output, a library with no UI consumer in
-this repo.
+Sort each finding into one of two piles.
 
-**If the answer is yes and the PR has no rendered before/after images, stop the
-review.** Not a finding to fix, not a point deducted — the review does not
-continue. Report `proof-kickback` to the controller:
+**Fix it yourself** when the right answer is clear and local: a bug with an
+obvious fix, a missing guard, a failing test or check, dead code, a stale
+comment, a missing test for the changed behavior, a naming or consistency slip,
+a leaked secret or debug line. This is most findings. Do not send any of these
+back to the builder, and do not list them for the human to decide — just fix
+them.
 
+**Escalate it** only when fixing it is not your call or not safe to do blind:
+
+- it needs a product or business decision (what the right behavior *is*);
+- the fix changes a public API, schema, stored data, or behavior users rely on;
+- the fix is a redesign much larger than the PR itself;
+- it is outside the PR's scope, or a pre-existing problem the PR only exposed;
+- you are not confident your fix would be right.
+
+Every escalation gets a line under *Needs human eyes* in this exact shape, so the
+human can decide in one read:
+
+```markdown
+- **[blocking]** `src/billing/invoice.ts:88` — Rounding happens per line item,
+  so a 3-item invoice can be off by up to 1.5¢ from the total.
+  **Not fixed because:** whether rounding is per-line or per-invoice is a
+  business rule this repo does not state.
+  **Recommendation:** round once on the invoice total; the tests in
+  `invoice.test.ts` already assume that.
 ```
-PROOF KICKBACK — PR #118
-Visible surface: the cart total on /checkout, changed by src/cart/total.ts:44.
-Missing: before/after captures of the checkout summary with a multi-item cart,
-showing the total wrong then right.
-Present instead: a passing unit test and the sentence "verified in the browser".
-```
 
-Name the screen, the file that changes it, and the exact captures you want.
-Nothing else — no framing, no theory of what the author was trying to do.
+Severity is one of **blocking** (should not merge as is), **should-fix**
+(merge is defensible, but fix soon), or **minor**. Never escalate something you
+could have fixed just to hand off the work.
 
-Rules for this gate:
+### Committing fixes
 
-- **Do not capture the images yourself.** You judge evidence; you do not author
-  it. Producing the proof you then accept destroys the independence the whole
-  stage exists for.
-- **Prose is never a substitute.** "Verified manually", "looks correct in dev",
-  "screenshots omitted for brevity" all fail the gate.
-- **Test a claimed absence.** If the PR says the change has no visible surface,
-  check the diff before believing it. A wrong claim fails the gate; a correct
-  one passes it and the review proceeds on textual proof.
-- **Images must actually render.** Open the PR and look. A broken image, a link
-  to a local path, or a file committed onto the PR branch instead of the proof
-  branch fails the gate.
-- **Images must match the diff.** A pair that shows a screen the change cannot
-  affect, or an "after" identical to the "before", is worse than no proof — that
-  is a finding in its own right, and you say so plainly.
-- Where the proof table asks for images **and** text — a visible bug fix needs
-  the failing→passing test too — missing text is an ordinary finding you fix or
-  list, not a kickback. Only missing *images* kick back.
+Fix each issue in the worktree. Run the tests nearest to what you touched as you
+go — the full suite runs once, in step 5. Commit **locally**; do **not** push
+between fixes, since every push re-triggers CI for no benefit.
 
-If the gate passes, continue to step 2 with the rest of your findings.
-
-## 2. Fix what you find
-
-Fix each issue yourself, one commit per issue, in the PR branch. The commit
-message is the deliverable:
+The commit message is the deliverable:
 
 ```
 Guard token refresh against concurrent callers
@@ -158,34 +178,106 @@ Every fix commit states **why it was needed**, **before/after behavior**, and
 **how to reproduce** the problem when a repro exists. No repro available → say
 so and explain how you established the issue instead.
 
-Findings you decide *not* to fix (out of scope, needs a product decision, a
-pre-existing problem) are not silently dropped — they go into the PR description
-under *Needs human eyes*.
+## 4. Proof — check it, and supply it if it is missing
 
-## 3. Loop
+Visual proof is judged once, against the code as it stands **after** your fixes.
 
-After fixing, re-run the build and the full test suite, push, and **review again
-from scratch** — your own fixes are now part of the diff and get the same
-hostility.
+Ask one question of the diff: *could someone watch this change happen on a
+screen?* Answer yes if the change touches — or changes the behavior of —
+anything a person looks at: a view, template, component, style, string shown to
+a user, a chart or generated document, an error or empty state, or a query,
+endpoint, handler or calculation whose result reaches a screen. A crash fix
+qualifies. Trace the change outward before answering no; a one-line backend fix
+very often has a visible surface one layer up.
 
-Stop when you reach **≥ 90% confidence**: you have found no new issue this pass,
-the tests genuinely cover the change, CI is green, and you would defend this
-code in front of the person who has to maintain it.
+Then:
 
-**Hard limit: five passes.** If pass five ends below 90%, stop and report
-`unresolvable`:
+- **Images present** — open the PR and look. They must render, show the screen
+  the diff actually affects, and differ the way the PR claims. If your fixes
+  changed what that screen shows, recapture the "after" yourself.
+- **Images missing, change is visible** — capture them yourself (the `run` skill
+  launches the app), publish them to the proof branch (conventions →
+  *Publishing proof images*), and add them to *Proof it works* marked
+  `Captured by review`. Do **not** send the PR back to the builder for them.
+  Note in *Review findings* that the builder omitted proof it could have given,
+  and whether its stated reason held up.
+- **Images missing, PR says there is no visible surface** — test the reason
+  against the diff. A concrete, correct reason passes and textual proof stands.
+  A weak or wrong one ("felt internal", "app was awkward to launch", no reason at
+  all) is a finding: capture the images yourself if the change is visible.
+- **You cannot capture them either** (the app will not start here) — say so in
+  *Proof it works* with the actual error, and add a *Needs human eyes* item
+  telling the human exactly what to look at. That does not stop the review.
 
+**Whether the change works is your call, with or without pictures.** Images are
+evidence, not a gate: if the tests, the code and what you ran convince you, the
+review passes; if they do not, that is a finding like any other.
+
+Rules for any image you capture: before and after from the same view, viewport
+and data; cropped to what changed; real captures from a run you performed —
+never a mockup. Where the proof table asks for a failing→passing test too, a
+missing one is an ordinary finding you fix.
+
+## 5. Check your own fixes — the delta, not the whole PR
+
+Your fixes are code too, but they are not a new PR. Review **only what you
+changed** since the last check:
+
+```bash
+git diff "$BASE_SHA"..HEAD
 ```
-UNRESOLVABLE after 5 passes — confidence 6/10
-Remaining: the retry design cannot be made correct without a queue; each
-fix moves the race rather than closing it. Recommend closing #118 and
-rewriting against a job-queue approach.
-```
 
-Do not keep looping, and do not lower the bar to declare victory. An honest
-"this needs a rewrite" is the valuable outcome here.
+Look for what fixes typically break: a regression next to the change, a test
+that now passes for the wrong reason, an error path the fix opened, a caller of
+something you changed. Then run the build and the **full** test suite.
 
-## 4. Squash into coherent commits
+If the delta check finds something, fix it and delta-check *that* fix, measured
+from a fresh `BASE_SHA`. Several small delta checks are fine and cheap. Each one
+covers only the lines that just changed.
+
+Separately, decide whether what changed since the last full pass needs another
+**full pass**: the whole PR, re-read with your fixes in context. It does only
+when the fixes were large or dangerous:
+
+- they rewrote logic in a high-risk area (money and calculations, auth,
+  security, concurrency, persistence, migrations, data loss); or
+- they changed the design — moved a seam, replaced an approach, changed an
+  interface several places depend on; or
+- they touched a large share of the PR, not a line here and there.
+
+Copy changes, renames, a guard clause, extra tests, removed dead code, a
+corrected comment, a `+` that should have been a `-`: none of those earn a full
+pass. A small string change never needs a full review. A rewrite of the math in
+a financial app always does.
+
+A repeated full pass follows steps 2–5 again, with its delta checks measured from
+a fresh `BASE_SHA`.
+
+### When to stop
+
+There is no fixed pass count. Every re-review, delta or full, must be justified
+by what changed since the last one. Never re-read code that nothing touched.
+
+- **Stop reviewing** once the latest check found nothing that needs a fix. At
+  that point every finding is fixed and checked, or escalated with a
+  recommendation.
+- "I found something this pass" is **not** a reason for another full pass.
+  Fixing it and checking that fix is.
+- **Watch for churn.** If fixes in one area keep producing new problems in that
+  area, the fix moves the bug instead of closing it, or you find yourself undoing
+  an earlier fix, stop fixing that area. Escalate it as **blocking** with your
+  recommendation (often "this needs a different approach"). Churn is a design
+  problem, and another pass will not solve it.
+
+Then score honestly. **≥ 90% confidence** means the tests genuinely cover the
+change, the full suite passes, nothing blocking is escalated, and you would
+defend this code in front of the person who has to maintain it. Below that, the
+PR is **not mergeable as it stands**. That is a verdict, not a reason to stop
+working: carry on through steps 6–8, so the user gets a clean, green PR and a
+clear account of why it should not merge. Do not lower the bar to declare
+victory. An honest "this needs a rewrite" is a valuable outcome.
+
+## 6. Squash into coherent commits
 
 Group by *area of work*, not chronology. Typical results:
 
@@ -208,52 +300,104 @@ git diff <sha-before-squash> HEAD --stat   # must be empty
 The `clean-pr-commits` skill covers this rewrite in detail; use it rather than
 reinventing the procedure.
 
-## 5. Rewrite the PR description
+## 7. Rewrite the PR description
 
 Markdown, the conventions sections, updated to reflect the code as it now
 stands — not as it was when opened. The last three are yours alone, written
 fresh from your own passes:
 
-- **Proof it works** — keep the images. If your own fixes changed what the
-  screen does, the existing captures are now stale evidence: say so in the
-  section and kick the PR back for fresh ones rather than shipping a pair that
-  no longer matches the code.
+- **Proof it works** — the images and output that prove the final code, with
+  any you captured marked `Captured by review`.
 - **Review findings** — what you found and fixed, one line each, with the
-  reasoning behind anything non-obvious. Silence here after five passes of
-  fixes is a lie.
-- **Needs human eyes** — specific `path/file.ts:42` pointers to code a human
-  must actually look at: business rules you inferred, a trade-off you chose, an
-  unhappy path you could not exercise, anything you fixed but are not certain
-  about. Also anything you chose not to fix. Every item is one *you* found and
-  still stand behind — nothing inherited from the body you were handed. `None.`
-  is a legitimate answer when you have earned it.
-- **Confidence** — `x/10`, with one sentence on what caps it. 10/10 is almost
-  never honest.
+  reasoning behind anything non-obvious. Include a builder that skipped
+  available proof or gave a weak reason for skipping it.
+- **Needs human eyes** — two kinds of item, in this order:
+  1. **Escalations**, in the shape from step 3: location, problem, *Not fixed
+     because*, *Recommendation*, severity. Blocking first.
+  2. **Check this** — code you did fix but a human should still look at: a
+     business rule you inferred, a trade-off you chose, an unhappy path you
+     could not exercise. One line each, `path/file.ts:42` plus why.
+
+  Every item is one *you* found and still stand behind — nothing inherited from
+  the body you were handed. `None.` is a legitimate answer when you have earned
+  it.
+- **Confidence** — `x/10`, one sentence on what caps it, and the line
+  `Reviewed through <head sha>` so any later follow-up knows where the delta
+  starts. 10/10 is almost never honest; a **blocking** escalation caps it below
+  9. Score from the evidence alone. The scores in these skills' examples are
+  placeholders, not typical values.
+- **Recommendation** — last line of the body, in bold: **Merge** or **Do not
+  merge**, then one or two sentences of reason a person can act on. A not-
+  mergeable PR says exactly what stands in the way and what you would do about
+  it, for example: "Do not merge — the retry design cannot be made correct
+  without a queue; each fix moved the race. Rewrite against a job queue."
 
 ```bash
 gh pr edit <PR> --body-file "$SCRATCH/pr-body.md"
 ```
 
-## 6. Verify green, then hand back
+## 8. Push once, verify green, hand back
 
 ```bash
+git push --force-with-lease origin HEAD
 gh pr checks <PR> --watch
 ```
 
-Force-pushing a squash re-triggers CI — wait for it. The PR must build and pass
-**after** the rewrite; a green run from before the squash proves nothing.
+This is the one push of the review and the one CI wait. If a check fails, read
+the log, fix it, delta-check the fix (step 5 rules — a CI fix rarely earns a
+full pass), push, and watch again. A green run from before your push proves
+nothing.
 
-Report to the controller: PR number, passes used, confidence, what you fixed,
-and what still needs human eyes.
+**Hand back green, whatever the verdict.** A not-mergeable PR still gets a green
+build, so the user is judging the design and not a broken build. The only
+exception is a failure the code cannot fix, such as a broken runner or an
+expired secret. Report that failure with its log. Never disable a check to get
+green.
+
+Report to the controller:
+
+```
+PR #118 · reviewed through a1b2c3d · ordinary · 1 full pass + 2 delta checks · <n>/10 · checks green
+Recommendation: Merge | Do not merge — <reason>
+Fixed (4): token refresh race; missing empty-cart test; dead helper removed; stale comment
+Proof: before/after captured by review (builder omitted them)
+Escalated (1):
+  [blocking] src/billing/invoice.ts:88 — per-line rounding. Recommend rounding on the total.
+```
+
+Then stay available: the controller may send you follow-ups instead of starting
+a new reviewer.
+
+## Follow-ups — review the change, not the PR again
+
+After the handoff you may be sent more work on the same PR: the user's review
+comments, a decision on one of your escalations, or new commits someone else
+pushed. Treat each as a scoped job:
+
+1. Record `BASE_SHA` as the SHA you last reviewed through (the *Confidence*
+   line has it if you are a fresh agent).
+2. **Comments or decisions** — make the change, the same fix-or-escalate way as
+   step 3. Reply to each review thread with what you did or why not.
+   **New commits** — review `git diff <reviewed sha>..HEAD` only.
+3. Apply step 5 to the delta: check it, run the full suite, and do a full pass
+   only if the delta is large or touches high-risk logic.
+4. Re-squash only if your changes belong in an existing commit, update the PR
+   body (findings, *Needs human eyes*, *Confidence*, the new reviewed SHA), push
+   once, watch CI, and report in the same shape.
+
+Never re-review the untouched rest of the PR on a follow-up. It was reviewed.
 
 ## Rules
 
 - **Take no context from outside the PR.** Independence is the whole product.
-- **No visual proof where visual proof was possible → kick it back.** Do not
-  review around it, do not capture it yourself, do not accept a description of a
-  screen in place of the screen.
-- **Fix, don't just complain.** Every finding gets a commit or a line in
-  *Needs human eyes*.
+- **Fix what is clearly fixable. Escalate only what is not yours to decide** —
+  with where, why you did not fix it, and what you recommend.
+- **Nothing goes back to the builder.** Not a small fix, not missing proof.
+- **One full pass, then deltas.** Check each round of fixes on its own. Repeat
+  a full pass only when what changed is large or high-risk, never for a trivial
+  fix. Churn in one area gets escalated, not looped on.
+- **Always finish.** Every review ends with coherent commits, a rewritten PR
+  body, a green build, and a clear merge or do-not-merge recommendation.
+- **Push once.** Commit locally while you work; push and watch CI at the end.
 - **Never merge.** Never open a second PR. Never touch another branch.
-- **Five passes, then stop.** Declaring a PR unresolvable is a success.
 - Never claim a check passed that you did not watch pass.

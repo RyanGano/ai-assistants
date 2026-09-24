@@ -13,10 +13,16 @@ skill that can do only its own job:
 factory-implement  →  factory-review  →  factory-handoff  →  factory-land
    (subagent)           (subagent)         (this session)     (this session)
    isolated worktree    PR-only context    user decides       merge + cleanup
-        ^                    |
-        +--------------------+
-         proof kickback: visual proof was possible and is missing
+        ^                    ^                   |
+        |                    +-------------------+  user comments / small decisions:
+        |                         resume reviewer,  review only that change
+        +----------------------------------------+  rework too big for review:
+                                                    resume builder, then reviewer checks the delta
 ```
+
+Nothing flows backwards from review to the builder. Review fixes what it can
+itself, captures missing proof itself, and hands everything else to the user
+as a list with recommendations.
 
 **Read `references/conventions.md` (next to this file) before starting.** It
 defines the slug, branch, worktree, lock, run-state, proof, and PR rules every
@@ -81,7 +87,8 @@ manual. The user should never have to remember which mode a run is in.
 ## 2. Stage 1 — implement
 
 Spawn a **fresh subagent** (`Agent`, `subagent_type: general-purpose`, run in the
-background so the user can interject). Its prompt must contain the task
+background so the user can interject). Keep its agent ID (see *Reuse agents*
+below). Its prompt must contain the task
 statement, the run-state file path, and an instruction to invoke the
 `factory-implement` skill — nothing about how you would have done it.
 
@@ -92,6 +99,9 @@ Task: <verbatim task statement>
 Do only what that skill describes. Report the PR number and URL when done.
 ```
 
+The builder hands back as soon as the PR is open and local tests pass. It does
+not wait on CI, because review watches CI once, after its own push.
+
 Do not poll and do not start the next stage early — you are notified when it
 finishes. While waiting, stay available to the user.
 
@@ -100,53 +110,40 @@ stated), surface that to the user and stop. Do not fix it yourself.
 
 ## 3. Stage 2 — adversarial review
 
-Spawn a **second, separate** subagent. This one gets **only the PR number and
-repo** — never the task statement, never your framing, never the implement
-agent's reasoning. Its independence is the entire point, and leaking context
-destroys it.
+Spawn a **second, separate** subagent, and keep its agent ID too. This one
+gets **only the PR number, the repo, and the worktree path**. Never give it the
+task statement, your framing, or the implement agent's reasoning. Its
+independence is the entire point, and leaking context destroys it.
 
 ```
 Invoke the `factory-review` skill.
 Repo: owner/name
 PR: 118
+Worktree: C:/Code/.sf-worktrees/myapp/Fix_42
 You have no other context, and must not seek any outside the PR itself.
 ```
 
-Outcomes:
+The reviewer runs one full pass and fixes every clear issue itself. After that,
+it checks only each round of its own fixes. It repeats a full pass only when
+what changed is large or high-risk. It captures any missing visual proof
+itself, pushes once, and watches CI once. You do not send anything back to the
+builder from this stage.
 
-- **Passed** (≥ 90% confidence) — go to stage 3.
-- **Proof kickback** — the PR could have carried before/after images and did
-  not. Send it back to the builder, not on to the user (below).
-- **Unresolvable** (5 passes without reaching confidence) — do **not** send it
-  back in. Report to the user that the PR needs rewriting, recommend closing the
-  PR and starting a fresh run with a revised task statement, and stop. Preserve
-  the review agent's findings — they are the input to the rewrite.
+Review always finishes. Whatever its verdict, you get back a green PR with
+coherent commits, a rewritten description, and a **Merge** or **Do not merge**
+recommendation with its reason. Record `fullPasses`, `deltaChecks`,
+`reviewedSha`, `confidence` and `reviewRecommendation` from its report, then go
+to stage 3 in every case:
 
-### Proof kickback
-
-Spawn a fresh `factory-implement` subagent on the **same branch and worktree**,
-passing the reviewer's kickback message verbatim and nothing else you know:
-
-```
-Invoke the `factory-implement` skill. This is a proof-kickback re-entry —
-the branch, worktree, lock and PR already exist and are yours.
-Run state: C:/Code/myapp/.git/software-factory/runs/42-login-redirect.json
-<the reviewer's kickback message, verbatim>
-Capture the proof it asks for, publish it, update the PR, and report back.
-```
-
-Then run stage 2 again with a **new** review subagent, from scratch — the old
-one saw a PR that no longer exists. Increment `kickbacks` in run state and reset
-`reviewPasses`.
-
-**Two kickbacks maximum** (conventions). If a third review still finds the proof
-missing, stop looping and take the run to stage 3 with the missing proof as the
-headline, so the user decides whether to accept it.
-
-Never tell the review agent that a previous review kicked this PR back, and
-never argue with a kickback on the builder's behalf. If the proof is genuinely
-unobtainable, that surfaces to the user — it is not something the controller
-waives.
+- **Merge** (≥ 90% confidence): the normal path.
+- **Merge, with escalations**: the escalations (issues it chose not to fix, each
+  with a reason and a recommendation) go to the user at stage 3. Do **not**
+  route them to the builder on your own. Deciding them is the user's job.
+- **Do not merge**: the review's reason becomes the handoff headline. Do not
+  send it back in for another round on your own. Let the user choose between
+  deciding the escalations, closing the PR and starting a fresh run with a
+  revised task statement, or accepting it anyway. Auto mode never merges this
+  one.
 
 ## 4. Stage 3 — audit and surface
 
@@ -159,9 +156,27 @@ This stage runs in **both** modes. In auto mode its audit is the only independen
 check left between the reviewer's own score and a merge, so it is never skipped
 or abbreviated.
 
-**Manual mode** — hand the verdict to the user and wait. If they leave review
-comments, pass them to a **new** `factory-review` subagent (comments + PR only),
-then return here. Repeat until they approve or call it off.
+**Manual mode**: hand the verdict to the user and wait. What the user says next
+is routed as a **scoped follow-up**, never a fresh full review:
+
+- **Review comments, or a decision on an escalation that the reviewer can carry
+  out** (for example "do your recommendation on item 1"): resume the review
+  agent with `SendMessage`. Send the comments or the decision, and nothing else.
+
+  ```
+  Follow-up on PR #118 (you reviewed through a1b2c3d).
+  <the user's PR comments, or: "Apply your recommendation on escalation 1.">
+  Review only the resulting change, per factory-review → Follow-ups.
+  ```
+
+- **Rework too big for review** (a redesign, a different approach, new scope
+  the user now wants): resume the **builder** with `SendMessage` and the user's
+  decision. When it reports the new head SHA, resume the reviewer with
+  `Review the new commits since <reviewedSha>, per factory-review → Follow-ups.`
+
+Then return here. On the re-audit, look at what changed and whether it changes
+the verdict. Do not redo the parts of the audit that nothing touched. Repeat
+until the user approves or calls it off.
 
 **Auto mode** — apply the auto-merge gate (conventions). If every gate holds,
 say so and go straight to stage 4:
@@ -174,11 +189,29 @@ If any gate fails, fall back to the manual path: report which gate stopped it,
 in one line, and wait for the user as usual.
 
 ```
-Auto-merge deferred — confidence 8/10 and 2 human-eyes items. Over to you.
+Auto-merge deferred — confidence <n>/10 and 2 human-eyes items. Over to you.
 ```
 
 A deferred auto-merge is a normal outcome, not an error. Never re-run review to
 chase a higher score, and never waive a gate because the run was marked auto.
+
+## Reuse agents, don't respawn them
+
+Every fresh subagent starts cold. It re-reads the conventions, the skill, the
+diff and the surrounding code before doing anything useful, which is the same
+cost paid twice in tokens and in time. So:
+
+- Keep the agent ID of the builder and the reviewer for the whole run. Continue
+  them with `SendMessage`, which keeps their context, whenever a stage has to
+  run again on the same PR.
+- Spawn a fresh agent only when the old one is gone (the session restarted, or
+  the agent errored out). In that case, give the new one the same minimal prompt
+  its stage always gets, plus the scoped follow-up. The PR body's `Reviewed
+  through <sha>` line tells a fresh reviewer where the delta starts, so it still
+  reviews only the change.
+- Resuming the reviewer does not compromise its independence. Everything it is
+  sent is PR-shaped: review comments, its own escalations, and new commits.
+  Still never pass it the task statement or the builder's reasoning.
 
 ## 5. Stage 4 — land
 
@@ -194,13 +227,13 @@ After an auto-merge, report what landed **and what the user did not see**, so an
 unattended merge is never silently unattended:
 
 ```
-#118 auto-merged · 9/10 · 2 review passes · issue #42 closed
+#118 auto-merged · <n>/10 · 1 full pass + 2 delta checks · issue #42 closed
 You did not review this one. Diff: <url>/files
 ```
 
 ## 6. Next run
 
-Report one summary line (`#118 merged · 3 review passes · 9/10`), then ask
+Report one summary line (`#118 merged · 1 full pass + 2 delta checks · <n>/10`), then ask
 whether to start another run. Runs are sequential by default — if the user wants
 two at once, each gets its own slug, branch, worktree and lock, and you must
 confirm they touch different code before starting the second.
@@ -209,6 +242,10 @@ confirm they touch different code before starting the second.
 
 - **One job per agent.** The implementer never reviews its own work; the reviewer
   never knows what was asked for; neither merges.
+- **Review never bounces work back to the builder.** It fixes what is clear,
+  captures missing proof, and escalates the rest to the user.
+- **Follow-ups are scoped.** A change after review gets a review of that change,
+  by the agent that already has the context, never a new full review.
 - **Never reach across a boundary.** If a stage agent stalls, re-spawn it or
   surface the problem — do not finish its work yourself.
 - **Never merge without explicit user approval** — unless the user put this run
