@@ -11,6 +11,7 @@ tracked file is Markdown that Claude Code reads as instructions.
 ## Layout
 
 ```
+poteto-skills/          # ported pstack skills, junctioned into skills/
 skills/
   <skill-name>/
     SKILL.md            # required: frontmatter + instructions
@@ -19,6 +20,15 @@ skills/
 CLAUDE.md
 README.md
 ```
+
+## poteto-skills
+
+`poteto-skills/` holds skills ported from poteto's pstack (MIT). Claude Code does
+not discover nested skill folders, so each one is linked into `skills/` by a
+gitignored directory junction. Edit them in `poteto-skills/`, never through the
+junction path in a commit. After adding a skill there, or on a fresh clone, run
+`poteto-skills/link-skills.ps1` and add the new `skills/<name>` line to
+`.gitignore`. See `poteto-skills/README.md` for what changed from upstream.
 
 ## The junction — read this before moving files
 

@@ -23,3 +23,22 @@ desktop.ini
 # Claude's synced skill. No need to commit.
 # ---------------------------------------------------------------------------
 synced/
+# ---------------------------------------------------------------------------
+# Junctions to poteto-skills/ (the real files are tracked there).
+# Recreate with poteto-skills/link-skills.ps1.
+# ---------------------------------------------------------------------------
+skills/automate-me
+skills/blast-radius
+skills/create-verification-skill
+skills/how
+skills/no-comments
+skills/principle-attack-the-premise
+skills/principle-laziness-protocol
+skills/principle-never-block-on-the-human
+skills/principle-prove-it-works
+skills/principle-test-behavior-not-implementation
+skills/reflect
+skills/teach
+skills/typescript-best-practices
+skills/unslop
+skills/why
