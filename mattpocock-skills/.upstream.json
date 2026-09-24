@@ -1,0 +1,61 @@
+{
+  "source": "https://github.com/mattpocock/skills/tree/main/skills",
+  "repo": "mattpocock/skills",
+  "path": "skills",
+  "commit": "c55ee46073ed923f86ce59a5eb3b6d895095d1b7",
+  "license": "MIT",
+  "imported": "2026-09-24",
+  "skills": {
+    "codebase-design": {
+      "upstream": "skills/engineering/codebase-design",
+      "changes": [
+        "agents/openai.yaml removed",
+        "Imported as a dependency of tdd"
+      ]
+    },
+    "diagnosing-bugs": {
+      "upstream": "skills/engineering/diagnosing-bugs",
+      "changes": [
+        "agents/openai.yaml removed"
+      ]
+    },
+    "domain-modeling": {
+      "upstream": "skills/engineering/domain-modeling",
+      "changes": [
+        "agents/openai.yaml removed",
+        "Imported as a dependency of grill-with-docs"
+      ]
+    },
+    "grill-with-docs": {
+      "upstream": "skills/engineering/grill-with-docs",
+      "changes": [
+        "agents/openai.yaml removed"
+      ]
+    },
+    "grilling": {
+      "upstream": "skills/productivity/grilling",
+      "changes": [
+        "agents/openai.yaml removed"
+      ]
+    },
+    "tdd": {
+      "upstream": "skills/engineering/tdd",
+      "changes": [
+        "agents/openai.yaml removed",
+        "Pointer to the code-review skill inlined (name collides with built-in /code-review)"
+      ]
+    },
+    "wizard": {
+      "upstream": "skills/engineering/wizard",
+      "changes": [
+        "agents/openai.yaml removed"
+      ]
+    },
+    "writing-for-agents": {
+      "upstream": "skills/productivity/writing-for-agents",
+      "changes": [
+        "agents/openai.yaml removed"
+      ]
+    }
+  }
+}

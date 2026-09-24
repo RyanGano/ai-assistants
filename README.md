@@ -67,6 +67,7 @@ task-by-task for easy review.
 | --- | --- |
 | [`upgrade-my-skills`](skills/upgrade-my-skills) | `/upgrade-my-skills from <github-url>` audits my Claude Code and VS Code history against another repo's skills, recommends a ranked batch, then imports my picks into a `<author>-skills/` folder, ports them to Claude Code, and junctions them into `skills/`. Re-run it on the same repo to pull upstream updates. |
 | [`poteto-skills/`](poteto-skills) | 15 skills from poteto's [pstack](https://github.com/cursor/plugins/tree/main/pstack/skills), imported this way. |
+| [`mattpocock-skills/`](mattpocock-skills) | 8 skills from Matt Pocock's [skills](https://github.com/mattpocock/skills/tree/main/skills), imported this way: bug diagnosis, TDD, plan grilling, setup wizards, and writing for agents. |
 
 ## Installing
 

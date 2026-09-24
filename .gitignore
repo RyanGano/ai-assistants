@@ -42,3 +42,13 @@ skills/teach
 skills/typescript-best-practices
 skills/unslop
 skills/why
+
+# Junctions to imported skill sets (real files are tracked in the set's folder).
+skills/codebase-design/
+skills/diagnosing-bugs/
+skills/domain-modeling/
+skills/grill-with-docs/
+skills/grilling/
+skills/tdd/
+skills/wizard/
+skills/writing-for-agents/
