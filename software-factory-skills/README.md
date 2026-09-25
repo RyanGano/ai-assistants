@@ -1,6 +1,6 @@
 # Software factory skills
 
-`software-factory` is the entry point: it drives one task through four stages,
+`software-factory` is the entry point: it drives one task through five stages,
 each run by a skill that can do only its own job — so the agent that writes the
 code is never the agent that judges it.
 
@@ -11,6 +11,13 @@ code is never the agent that judges it.
 | [`factory-review`](factory-review) | Reviews the PR adversarially with no context outside it, fixes every finding, loops to 90% confidence or declares it unresolvable, then squashes and rewrites the description. |
 | [`factory-handoff`](factory-handoff) | Checks the PR against what was actually asked for, verifies the proof is real, and gives a link, a status and a merge recommendation. |
 | [`factory-land`](factory-land) | Merges an approved, green PR, confirms the issue closed, and tears down the worktree, branch and lock. |
+| [`factory-spin-off`](factory-spin-off) | Files everything review left out of the merged PR as GitHub issues linked back to it, splitting anything too big for one run with `split-into-issues`. |
+
+Review sorts what it does not fix into **escalations** (the PR needs a decision
+before it merges) and **spin-offs** (the PR is complete without them). Spin-offs
+never block a merge; they become issues once the PR lands. If you spin off
+something the PR depends on, the issue is filed at once and the PR is parked
+behind it.
 
 Auto-merge is opt-in per run and gated: it lands unattended only at a review
 confidence of 9/10 or better, with *Needs human eyes* empty, checks green, and

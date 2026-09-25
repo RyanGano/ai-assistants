@@ -39,6 +39,16 @@ gh issue list --state open --limit 50 \
 Skip issues that are already assigned to someone else, blocked, or that a
 `Fix_<n>` branch/PR already exists for (`gh pr list --state all --json headRefName`).
 
+An issue is **blocked** when it has an open blocker, either a native link or a
+`Blocked by #<n>` line in its body naming an issue that is still open:
+
+```
+gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by" --jq '.[] | select(.state == "open") | .number'
+```
+
+Issues from `split-into-issues` form such chains; working the first unblocked
+one unblocks the next.
+
 ### 2. Choose an issue to fix
 
 Work strictly **FIFO — oldest issue number first** among the remaining
@@ -49,7 +59,8 @@ is far too large or ambiguous to fix in this pass (see the "much larger than
 expected" rule below), surface that to the user and ask whether to skip it or
 pause, rather than silently reordering. Announce which issue you're picking (its
 number) before diving in. If the user named a specific issue, use that one
-instead of the FIFO pick.
+instead of the FIFO pick — unless it is blocked. Then name its open blockers and
+the first unblocked issue in its chain, and ask which to do.
 
 Announce the pick as a **bold headline on its own line**, as the first thing you
 say once the issue is chosen and before moving on to step 3:

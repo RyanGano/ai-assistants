@@ -1,19 +1,19 @@
 ---
 name: software-factory
-description: Run a task end-to-end through an isolated build → adversarial review → human approval → merge pipeline, using a separate agent for each stage. Use when the user says "software factory", "run this through the factory", "build and review this", "fix issue N and review it", "take this from idea to merged PR", or asks for work done in a worktree with an independent code review before it reaches them. Supports an opt-in auto-merge mode (`/software-factory 42 auto`, "merge automatically") that lands the PR unattended only at 9/10-or-better review confidence with no human-eyes items and green checks. Orchestrates factory-implement, factory-review, factory-handoff, and factory-land.
+description: Run a task end-to-end through an isolated build → adversarial review → human approval → merge pipeline, filing whatever review left out as GitHub issues, using a separate agent for each stage. Use when the user says "software factory", "run this through the factory", "build and review this", "fix issue N and review it", "take this from idea to merged PR", or asks for work done in a worktree with an independent code review before it reaches them. Supports an opt-in auto-merge mode (`/software-factory 42 auto`, "merge automatically") that lands the PR unattended only at 9/10-or-better review confidence with no human-eyes items and green checks. Orchestrates factory-implement, factory-review, factory-handoff, factory-land, and factory-spin-off.
 ---
 
 # Software factory
 
 You are the **controller**. You do not write the feature, you do not review it,
-and you do not merge it. You move one run through four stages, each done by a
+and you do not merge it. You move one run through five stages, each done by a
 skill that can do only its own job:
 
 ```
-factory-implement  →  factory-review  →  factory-handoff  →  factory-land
-   (subagent)           (subagent)         (this session)     (this session)
-   isolated worktree    PR-only context    user decides       merge + cleanup
-        ^                    ^                   |
+factory-implement  →  factory-review  →  factory-handoff  →  factory-land  →  factory-spin-off
+   (subagent)           (subagent)         (this session)     (this session)    (this session)
+   isolated worktree    PR-only context    user decides       merge + cleanup   file left-out work
+        ^                    ^                   |                                as issues
         |                    +-------------------+  user comments / small decisions:
         |                         resume reviewer,  review only that change
         +----------------------------------------+  rework too big for review:
@@ -22,7 +22,8 @@ factory-implement  →  factory-review  →  factory-handoff  →  factory-land
 
 Nothing flows backwards from review to the builder. Review fixes what it can
 itself, captures missing proof itself, and hands everything else to the user
-as a list with recommendations.
+as a list with recommendations: escalations the PR needs decided, and
+spin-offs it can merge without, which become issues once it lands.
 
 **Read `references/conventions.md` (next to this file) before starting.** It
 defines the slug, branch, worktree, lock, run-state, proof, and PR rules every
@@ -35,7 +36,10 @@ Invoke as `/software-factory <task or issue number> [auto]`.
 Settle these before spawning anything:
 
 - **Task statement** — one paragraph, in the user's own terms, of what "done"
-  means. If the input is an issue number, read it: `gh issue view <n> --comments`.
+  means. If the input is an issue number, read it: `gh issue view <n> --comments`,
+  and check it for open blockers (conventions → *Blocked issues*). A blocked
+  issue does not start: name its blockers and the first unblocked issue in the
+  chain, and stop.
 - **Slug** and **branch** (conventions).
 - **Home repo** path and **base branch**.
 - **Merge mode** — manual (default) or auto.
@@ -78,7 +82,7 @@ Write the run-state file, then tell the user the plan in three lines:
 Run 42-login-redirect · branch Fix_42 · base main
 Worktree C:/Code/.sf-worktrees/myapp/Fix_42
 Merge mode: auto (merges only at 9/10+ with no human-eyes items)
-Stages: implement → review → audit → merge
+Stages: implement → review → audit → merge → spin-offs
 ```
 
 State the merge mode explicitly in that block every time, including when it is
@@ -139,6 +143,7 @@ to stage 3 in every case:
 - **Merge, with escalations**: the escalations (issues it chose not to fix, each
   with a reason and a recommendation) go to the user at stage 3. Do **not**
   route them to the builder on your own. Deciding them is the user's job.
+  Spin-offs ride along to stage 3 as well; they do not block anything.
 - **Do not merge**: the review's reason becomes the handoff headline. Do not
   send it back in for another round on your own. Let the user choose between
   deciding the escalations, closing the PR and starting a fresh run with a
@@ -173,6 +178,16 @@ is routed as a **scoped follow-up**, never a fresh full review:
   the user now wants): resume the **builder** with `SendMessage` and the user's
   decision. When it reports the new head SHA, resume the reviewer with
   `Review the new commits since <reviewedSha>, per factory-review → Follow-ups.`
+
+- **Park** (the user spins off an escalation the PR depends on): invoke
+  `factory-spin-off` in park mode for that item, then the cleanup-only half of
+  `factory-land`. The PR stays open with `Blocked by #<n>` at the top of its
+  body. Report the run as parked and stop.
+
+  To resume once the blocker lands (the user asks, or `/software-factory` is
+  given an issue whose run state reads `parked`): claim a worktree on the kept
+  branch, have the builder rebase it onto fresh `origin/<default>`, then resume
+  the reviewer on the new commits since `reviewedSha`, and hand off as usual.
 
 Then return here. On the re-audit, look at what changed and whether it changes
 the verdict. Do not redo the parts of the audit that nothing touched. Repeat
@@ -223,17 +238,28 @@ What counts as permission depends on the mode — explicit user approval in manu
 mode, the full gate set in auto mode. `factory-land` re-checks this itself rather
 than trusting the controller; pass it the run-state path so it can see the mode.
 
+## 6. Stage 5 — spin-offs
+
+Invoke `factory-spin-off` in this session once the merge lands. It files every
+item under the PR's `## Spin-offs` as an issue (or an ordered chain of issues)
+linked back to the PR, and marks the run `done`. The user's merge approval, or
+the run's auto mode, is the permission — do not ask again.
+
+A run that ends without a merge files nothing: list its spin-offs in the closing
+report and offer to file them.
+
 After an auto-merge, report what landed **and what the user did not see**, so an
 unattended merge is never silently unattended:
 
 ```
 #118 auto-merged · <n>/10 · 1 full pass + 2 delta checks · issue #42 closed
+Spin-offs filed: #131, #132 (parent of #133–#135)
 You did not review this one. Diff: <url>/files
 ```
 
-## 6. Next run
+## 7. Next run
 
-Report one summary line (`#118 merged · 1 full pass + 2 delta checks · <n>/10`), then ask
+Report one summary line (`#118 merged · 1 full pass + 2 delta checks · <n>/10 · spin-offs #131 #132`), then ask
 whether to start another run. Runs are sequential by default — if the user wants
 two at once, each gets its own slug, branch, worktree and lock, and you must
 confirm they touch different code before starting the second.
@@ -251,6 +277,8 @@ confirm they touch different code before starting the second.
 - **Never merge without explicit user approval** — unless the user put this run
   in auto mode *and* every auto-merge gate holds. Auto mode is the only path
   around this rule, it is opt-in per run, and it never widens on its own.
+- **Nothing left out goes unrecorded.** Every spin-off of a merged PR becomes
+  an issue linked to it.
 - **Never leave a worktree or lock behind.** If a run is abandoned, run the
   cleanup half of `factory-land` and say so.
 - Report faithfully. A red build, a skipped proof, or a review that stalled gets

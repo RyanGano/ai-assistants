@@ -1,7 +1,7 @@
 # Software factory conventions
 
 Shared rules for `software-factory` and its stage skills (`factory-implement`,
-`factory-review`, `factory-handoff`, `factory-land`). Every stage obeys these.
+`factory-review`, `factory-handoff`, `factory-land`, `factory-spin-off`). Every stage obeys these.
 Where a stage skill and this file disagree, this file wins.
 
 ## Vocabulary
@@ -9,10 +9,13 @@ Where a stage skill and this file disagree, this file wins.
 | Term | Meaning |
 | --- | --- |
 | **Controller** | The session running `software-factory`. Owns the run, talks to the user, spawns stage agents. |
-| **Run** | One task moving through implement → review → handoff → land. |
+| **Run** | One task moving through implement → review → handoff → land → spin-off. |
 | **Slug** | Short kebab-case id for the run, derived from the issue number or task title (e.g. `42-login-redirect`, `add-csv-export`). |
 | **Home repo** | The user's normal clone — where the controller runs. Never the place code is written. |
 | **Worktree** | The isolated checkout a run's code is written in. |
+| **Escalation** | A review finding the reviewer did not fix, handed to the human with why and a recommendation. |
+| **Spin-off** | An escalation the run deliberately leaves out of this PR because the PR is correct and complete without it. Filed as a GitHub issue after the merge. Not to be confused with a *follow-up*. |
+| **Follow-up** | A scoped re-review of only what changed after handoff: user comments, an escalation decision, or new commits. |
 
 ## Default branch
 
@@ -31,6 +34,19 @@ Fall back to `main`, then `master`, and say which you used.
 - No issue: `sf_<slug>`.
 
 One run = one branch = one worktree = one PR. Never bundle unrelated work.
+
+## Blocked issues
+
+An issue with an open blocker is not ready to build. Before starting a run on an
+issue, list its open blockers:
+
+```bash
+gh api "repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by" --jq '.[] | select(.state == "open") | .number'
+```
+
+and read its body for a `Blocked by #<n>` line naming an issue that is still
+open. Any open blocker → do not start. Name the blockers, and walk the chain to
+the first unblocked issue so the user knows where to begin.
 
 ## Worktree isolation
 
@@ -96,7 +112,7 @@ the worktree being deleted:
   "pr": 118,
   "prUrl": "https://github.com/owner/repo/pull/118",
   "proofBranch": "sf-proof/Fix_42",
-  "stage": "implement | review | handoff | land | done | blocked",
+  "stage": "implement | review | handoff | land | spin-off | done | parked | blocked",
   "fullPasses": 1,
   "deltaChecks": 2,
   "reviewRecommendation": "merge | do not merge: <reason>",
@@ -106,6 +122,7 @@ the worktree being deleted:
   "confidence": 8,
   "autoMerge": false,
   "autoMergeDecision": null,
+  "spinOffs": [],
   "blockedReason": null
 }
 ```
@@ -135,6 +152,7 @@ Auto-merge fires **only when every one of these is true**:
 | Confidence is **9/10 or better** | `factory-review` | review's own score |
 | Review recommends **Merge** | `factory-review` | run state |
 | *Needs human eyes* is `None.` | `factory-handoff` | PR body |
+| *Spin-offs* holds nothing the PR depends on | `factory-handoff` | the audit |
 | PR does what the task statement asked, nothing more | `factory-handoff` | the audit |
 | Proof is present and spot-checks out | `factory-handoff` | the audit |
 | All checks green, mergeable, no unresolved threads | `factory-land` | GitHub |
@@ -192,6 +210,10 @@ stop that loop. `factory-review` has the details.
   commits locally, squashes, pushes once, and watches CI once.
 - **Follow-ups are scoped.** User comments, escalation decisions and later
   commits get a review of that change only, by the same agent, resumed.
+- **Spin off what the PR does not need.** Work the PR is correct and complete
+  without — out of scope, pre-existing, a redesign bigger than the PR — goes
+  under *Spin-offs*, not *Needs human eyes*. It does not block a merge, and
+  `factory-spin-off` files it as an issue once the PR lands.
 
 ## Verification is not optional
 
@@ -340,6 +362,7 @@ Markdown. The sections are split by stage:
 ## Proof it works      <- factory-implement (review keeps it current)
 ## Review findings     <- factory-review
 ## Needs human eyes    <- factory-review
+## Spin-offs           <- factory-review
 ## Confidence          <- factory-review
 ```
 
@@ -348,12 +371,16 @@ Markdown. The sections are split by stage:
 - **Needs human eyes** — first the escalations (issues review did not fix: the
   location, the problem, *Not fixed because*, *Recommendation*, and a severity
   of blocking, should-fix or minor), then specific `file.ts:42` pointers to
-  fixed-but-subtle code. Or `None.` Never leave it empty.
+  fixed-but-subtle code. Or `None.` Never leave it empty. An escalation the PR
+  depends on stays here even when the fix is "spin it off first".
+- **Spin-offs** — unfixed work the PR is correct and complete without, each
+  with the location, the problem, *Not fixed here because*, *Recommendation*,
+  and a **Size** of `one issue` or `needs splitting`. Or `None.`
 - **Confidence** — `x/10`, one sentence on what caps it, and
   `Reviewed through <sha>`. Ends with review's bold **Merge** or **Do not
   merge** recommendation and its reason.
 
-The implementer never writes the last three. Review is the gate on whether a PR
+The implementer never writes the last four. Review is the gate on whether a PR
 is complete and mergeable, and a risk list handed to it by the author gets
 inherited rather than judged. Review writes those sections from its own passes
 alone.
@@ -370,6 +397,7 @@ alone.
 | `factory-review` | Know anything about the run beyond the PR itself; merge; open new PRs; send fixable work back to the builder; re-review untouched code on a follow-up |
 | `factory-handoff` | Change code, push, or merge |
 | `factory-land` | Merge anything unapproved or red; land a PR it also reviewed |
+| `factory-spin-off` | Change code, push, or merge; file anything for a PR that did not merge, except a park the user chose |
 
 A stage that hits work belonging to another stage stops and reports, rather than
 reaching across the boundary.

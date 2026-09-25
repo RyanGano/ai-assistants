@@ -70,6 +70,12 @@ Cross-check it against the diff: anything you would want a human to look at that
 the PR does not mention gets added to your report (not to the PR — you do not
 edit it).
 
+Then read *Spin-offs* with one question per item: *is this PR correct and
+complete without it?* A spin-off the PR actually depends on is mis-sorted — it
+would slip past the auto-merge gate and ship a broken change. Report it under
+**Decide** as an escalation, say review put it in the wrong section, and treat
+*Needs human eyes* as non-empty from here on.
+
 ## 4. Give the user the verdict
 
 One compact block, no preamble:
@@ -87,12 +93,17 @@ Decide
      Not fixed: no stated token lifetime. Review recommends: 60s, matching the IdP default.
 Check
   - src/auth/session.ts:88 — token-refresh race, fixed but subtle
+Spin off (filed as issues after merge)
+  S1. src/auth/logout.ts:30 — logout has the same redirect bug. One issue.
 
 **Recommendation: merge after deciding item 1.**
 ```
 
 List the escalations under **Decide** and number them, so the user can answer
-in a word ("take 1", "leave 1"). Each one shows review's recommendation.
+in a word ("take 1", "leave 1", "spin off 1"). Each one shows review's
+recommendation. List spin-offs under **Spin off**, numbered `S1`, `S2`, so the
+user can pull one into this PR ("take S1"); saying nothing lets them be filed
+after the merge.
 
 The recommendation is one of:
 
@@ -114,6 +125,8 @@ check are the three the audit covers:
 - The PR does what the task statement asked, and nothing more.
 - The proof is present and spot-checks out — including the images, where the
   change has a visible surface.
+
+- *Spin-offs* holds nothing the PR depends on (step 3).
 
 Plus the two carried in run state: confidence **9/10 or better**, and review's
 recommendation is **Merge**.
@@ -157,7 +170,12 @@ Do not sit in a tight polling loop, and do not treat silence as approval.
 Outcomes:
 
 - **Approved** (GitHub approval, or the user saying so here) → set run state
-  `stage: "land"` and tell the controller to run `factory-land`.
+  `stage: "land"` and tell the controller to run `factory-land`. Approval also
+  covers filing the listed spin-offs after the merge.
+- **"Spin off N" on an escalation the PR depends on** → the PR cannot merge
+  ahead of that work. Tell the controller to **park** the run: `factory-spin-off`
+  files the item now, then the cleanup-only half of `factory-land` runs. Any
+  other "spin off N" or "take SN" is a decision like the rest, routed below.
 - **Comments, change requests, or decisions on the Decide items**: collect
   every unresolved thread (`gh pr view <N> --comments`, plus review threads)
   and the user's decisions. Hand them to the controller as a **scoped

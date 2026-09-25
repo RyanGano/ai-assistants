@@ -117,7 +117,9 @@ git -C "$HOME_REPO" worktree list      # the run's worktree must be gone
 ls "$HOME_REPO/.git/software-factory/locks/"
 ```
 
-Mark the run `stage: "done"` in its state file.
+Mark the run `stage: "spin-off"` in its state file. The controller runs
+`factory-spin-off` next, against the default branch you just pulled; that stage
+marks the run done.
 
 ## 5. Report
 
@@ -140,12 +142,15 @@ main now at a1b2c3d
 ## Cleanup-only mode
 
 When a run is abandoned or rejected (including a "do not merge" PR the user
-closes), this skill is invoked for step 4 alone. Then:
+closes), or **parked** behind a spin-off it depends on, this skill is invoked
+for step 4 alone. Then:
 
 - Do **not** merge, and do not delete the remote branch or close the PR unless
   the user asked. A rejected PR's branch is the input to any rewrite.
 - Do remove the worktree, prune, and release the lock, so the slug can be used
   again.
+- Leave the run's stage as `factory-spin-off` set it (`parked`), or set
+  `done` for an abandoned run.
 - Say plainly what was kept and what was destroyed.
 
 ## Rules

@@ -1,6 +1,6 @@
 ---
 name: factory-review
-description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance — fixing every obvious issue in place, capturing any missing before/after visual proof itself, and returning a clear list of the issues it chose not to fix with why and what it would recommend. Each round of fixes gets a check of just that delta; a full pass is repeated only when what changed warrants it, never for a trivial fix. Always finishes the job — coherent commits, a rewritten PR description, a green build, and a clear merge or do-not-merge recommendation — even when the PR is not mergeable. Also handles scoped follow-ups (user comments, a later fix) by reviewing only the new change. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
+description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance — fixing every obvious issue in place, capturing any missing before/after visual proof itself, and returning a clear list of the issues it chose not to fix with why and what it would recommend, split into escalations the PR needs decided and spin-offs it can merge without. Each round of fixes gets a check of just that delta; a full pass is repeated only when what changed warrants it, never for a trivial fix. Always finishes the job — coherent commits, a rewritten PR description, a green build, and a clear merge or do-not-merge recommendation — even when the PR is not mergeable. Also handles scoped follow-ups (user comments, a later fix) by reviewing only the new change. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
 ---
 
 # Factory: adversarial review
@@ -112,9 +112,9 @@ failure this skill is written to prevent. There is no quota: *n* is however many
 real problems the code has, and zero is a fine answer. Never stretch for
 findings to make a pass look productive.
 
-## 3. Fix or escalate — every finding, once
+## 3. Fix, escalate, or spin off — every finding, once
 
-Sort each finding into one of two piles.
+Sort each finding into one of three piles.
 
 **Fix it yourself** when the right answer is clear and local: a bug with an
 obvious fix, a missing guard, a failing test or check, dead code, a stale
@@ -123,13 +123,25 @@ a leaked secret or debug line. This is most findings. Do not send any of these
 back to the builder, and do not list them for the human to decide — just fix
 them.
 
-**Escalate it** only when fixing it is not your call or not safe to do blind:
+**Leave it unfixed** only when fixing it is not your call or not safe to do blind:
 
 - it needs a product or business decision (what the right behavior *is*);
 - the fix changes a public API, schema, stored data, or behavior users rely on;
 - the fix is a redesign much larger than the PR itself;
 - it is outside the PR's scope, or a pre-existing problem the PR only exposed;
 - you are not confident your fix would be right.
+
+Then ask one question of each item you did not fix: *is this PR correct and
+complete without it?*
+
+- **No** — the change is broken, unsafe or misleading until it is dealt with.
+  It is an **escalation**, and goes under *Needs human eyes*. When the right
+  move is to do that work separately first, say so in the recommendation
+  ("spin this off and hold the PR until it lands"); it still blocks.
+- **Yes** — out of scope, a pre-existing problem the PR only exposed, a
+  redesign bigger than the PR, a neighbouring place with the same flaw. It is a
+  **spin-off**, and goes under *Spin-offs*. It will be filed as an issue after
+  the merge, so write it for someone who will read it cold.
 
 Every escalation gets a line under *Needs human eyes* in this exact shape, so the
 human can decide in one read:
@@ -144,8 +156,26 @@ human can decide in one read:
 ```
 
 Severity is one of **blocking** (should not merge as is), **should-fix**
-(merge is defensible, but fix soon), or **minor**. Never escalate something you
-could have fixed just to hand off the work.
+(merge is defensible, but fix soon), or **minor**.
+
+Every spin-off gets the same shape, with a **Size** in place of severity:
+
+```markdown
+- `src/audit/log.ts:88` — The audit-log query this PR now calls is unpaged, so
+  the log view loads every row. The PR's own call passes a limit.
+  **Not fixed here because:** the unpaged query predates this PR and serves two
+  other views.
+  **Recommendation:** add cursor paging to `listEntries` and move all three
+  callers to it.
+  **Size:** one issue
+```
+
+Size is `one issue` when the work fits in one PR, `needs splitting` when it
+crosses several seams or needs staged steps. It is a hint; the spin-off stage
+makes the call with the code open.
+
+Never escalate or spin off something you could have fixed just to hand off the
+work.
 
 ### Committing fixes
 
@@ -259,7 +289,7 @@ There is no fixed pass count. Every re-review, delta or full, must be justified
 by what changed since the last one. Never re-read code that nothing touched.
 
 - **Stop reviewing** once the latest check found nothing that needs a fix. At
-  that point every finding is fixed and checked, or escalated with a
+  that point every finding is fixed and checked, or escalated or spun off with a
   recommendation.
 - "I found something this pass" is **not** a reason for another full pass.
   Fixing it and checking that fix is.
@@ -321,6 +351,8 @@ fresh from your own passes:
   Every item is one *you* found and still stand behind — nothing inherited from
   the body you were handed. `None.` is a legitimate answer when you have earned
   it.
+- **Spin-offs** — every spin-off from step 3, in the shape shown there. `None.`
+  when there are none.
 - **Confidence** — `x/10`, one sentence on what caps it, and the line
   `Reviewed through <head sha>` so any later follow-up knows where the delta
   starts. 10/10 is almost never honest; a **blocking** escalation caps it below
@@ -363,6 +395,8 @@ Fixed (4): token refresh race; missing empty-cart test; dead helper removed; sta
 Proof: before/after captured by review (builder omitted them)
 Escalated (1):
   [blocking] src/billing/invoice.ts:88 — per-line rounding. Recommend rounding on the total.
+Spin-offs (1):
+  src/audit/log.ts:88 — unpaged audit-log query. One issue.
 ```
 
 Then stay available: the controller may send you follow-ups instead of starting
@@ -376,8 +410,13 @@ pushed. Treat each as a scoped job:
 
 1. Record `BASE_SHA` as the SHA you last reviewed through (the *Confidence*
    line has it if you are a fresh agent).
-2. **Comments or decisions** — make the change, the same fix-or-escalate way as
-   step 3. Reply to each review thread with what you did or why not.
+2. **Comments or decisions** — make the change, the same fix, escalate or spin
+   off way as step 3. Reply to each review thread with what you did or why not.
+   Two decisions move items between sections without touching code: **take
+   spin-off N** makes it work for this PR (fix it, then drop it from
+   *Spin-offs*), and **spin off escalation N** moves it from *Needs human eyes*
+   to *Spin-offs* — only when the PR is correct and complete without it. An
+   escalation the PR depends on stays put; the controller handles parking.
    **New commits** — review `git diff <reviewed sha>..HEAD` only.
 3. Apply step 5 to the delta: check it, run the full suite, and do a full pass
    only if the delta is large or touches high-risk logic.
@@ -390,8 +429,9 @@ Never re-review the untouched rest of the PR on a follow-up. It was reviewed.
 ## Rules
 
 - **Take no context from outside the PR.** Independence is the whole product.
-- **Fix what is clearly fixable. Escalate only what is not yours to decide** —
-  with where, why you did not fix it, and what you recommend.
+- **Fix what is clearly fixable. Escalate only what is not yours to decide,
+  and spin off what the PR does not need** — each with where, why you did not
+  fix it, and what you recommend.
 - **Nothing goes back to the builder.** Not a small fix, not missing proof.
 - **One full pass, then deltas.** Check each round of fixes on its own. Repeat
   a full pass only when what changed is large or high-risk, never for a trivial

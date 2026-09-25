@@ -72,3 +72,6 @@ skills/modernize-node-tooling/
 skills/modernize-use-npm/
 skills/modernize-github-actions/
 skills/add-modernization-skills/
+
+# Junctions to skill sets (real files are tracked in the set's folder).
+skills/factory-spin-off/

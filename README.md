@@ -17,13 +17,16 @@ whether one gets pulled in.
 | [`fix-github-issue`](skills/fix-github-issue) | Picks an open GitHub issue, fixes it end to end, opens a Draft PR, then moves to the next. Language- and stack-agnostic. |
 | [`handle-pr-comments`](skills/handle-pr-comments) | Finds unhandled reviewer comments on open PRs and resolves each — answering questions, making changes, and replying with the commit that addressed it. |
 | [`clean-pr-commits`](skills/clean-pr-commits) | Rewrites a PR branch's history into a small set of coherent commits grouped by intent, without changing the resulting tree. |
+| [`add-github-issue`](skills/add-github-issue) | Writes and files a GitHub issue in a fixed template (overview, why, implementation plan, how we'll know it worked), grounded in the repo's real files. |
+| [`split-into-issues`](skills/split-into-issues) | Breaks work too big for one PR into a parent issue and ordered child issues, linked as sub-issues with native blocked-by links, so an agent can work the chain without stopping. |
 | [`delete-unused-branches`](skills/delete-unused-branches) | Deletes local branches already merged into the default branch, including squash- and rebase-merges that `git branch --merged` misses. |
 
 ### Software factory — [`software-factory-skills/`](software-factory-skills)
 
 `software-factory` runs one task through an isolated build, an adversarial
 review, a human handoff and a merge, with a separate skill for each stage so the
-agent that writes the code never judges it. Auto-merge is opt-in per run and
+agent that writes the code never judges it. Anything review leaves out of the
+PR is filed as an issue after the merge. Auto-merge is opt-in per run and
 gated. The set's README covers each stage.
 
 ### Modernization — [`modernize-skills/`](modernize-skills)
