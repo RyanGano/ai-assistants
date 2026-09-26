@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Run a task end-to-end through an isolated build → adversarial review → human approval → merge pipeline, filing whatever review left out as GitHub issues, using a separate agent for each stage. Use when the user says "software factory", "run this through the factory", "build and review this", "fix issue N and review it", "take this from idea to merged PR", or asks for work done in a worktree with an independent code review before it reaches them. Supports an opt-in auto-merge mode (`/software-factory 42 auto`, "merge automatically") that lands the PR unattended only at 9/10-or-better review confidence with no human-eyes items and green checks. Orchestrates factory-implement, factory-review, factory-handoff, factory-land, and factory-spin-off.
+description: Run a task through an isolated build → adversarial review → human approval → merge pipeline, one agent per stage. Use when the user says "software factory", "run this through the factory", or "fix issue N and review it". Add `auto` to merge unattended when review is confident.
 ---
 
 # Software factory

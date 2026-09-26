@@ -1,6 +1,6 @@
 ---
 name: factory-spin-off
-description: File every spin-off a factory run left out of its PR as a GitHub issue — one issue via `add-github-issue`, or an ordered, blocked chain via `split-into-issues` when the work is too big for one run — linked back to the PR that spun it off. Also files a single spin-off early when the user parks a PR behind it. Use when the `software-factory` controller reaches the spin-off stage after a merge, when the user parks a PR on a spin-off at handoff, or when the user asks to "file the spin-offs" or "turn the unfixed review items into issues" for a factory PR.
+description: Software-factory spin-off stage — file the review's spin-offs as GitHub issues linked back to the PR.
 ---
 
 # Factory: file the spin-offs

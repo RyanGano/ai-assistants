@@ -1,6 +1,6 @@
 ---
 name: factory-review
-description: Adversarially review one pull request with no context beyond the PR itself — attacking the design, the problem framing, correctness, cleanliness and performance — fixing every obvious issue in place, capturing any missing before/after visual proof itself, and returning a clear list of the issues it chose not to fix with why and what it would recommend, split into escalations the PR needs decided and spin-offs it can merge without. Each round of fixes gets a check of just that delta; a full pass is repeated only when what changed warrants it, never for a trivial fix. Always finishes the job — coherent commits, a rewritten PR description, a green build, and a clear merge or do-not-merge recommendation — even when the PR is not mergeable. Also handles scoped follow-ups (user comments, a later fix) by reviewing only the new change. Use when the `software-factory` controller dispatches the review stage, or when the user asks to "tear this PR apart", "adversarially review PR N", or "review and fix until it's solid".
+description: Software-factory review stage — adversarially review one PR, fix what is obvious, and return escalations, spin-offs, and a merge recommendation.
 ---
 
 # Factory: adversarial review

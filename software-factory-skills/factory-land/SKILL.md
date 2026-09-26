@@ -1,6 +1,6 @@
 ---
 name: factory-land
-description: Merge an approved, green PR, confirm its linked issue closed, then tear down everything the run created — worktree, local and remote branch, and the run lock — leaving no stragglers. Use when the `software-factory` controller reaches the merge stage, when the user says "merge it", "land the PR", "ship it", or when a run is abandoned and its worktree needs cleaning up. Refuses to merge anything red, or anything unapproved unless the run is in auto-merge mode and every gate re-verifies here.
+description: Software-factory land stage — merge the approved, green PR and tear down the run's worktree, branches, and lock.
 ---
 
 # Factory: merge and clean up

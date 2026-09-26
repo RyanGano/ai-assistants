@@ -7,8 +7,8 @@ code is never the agent that judges it.
 | Skill | Stage |
 | --- | --- |
 | [`software-factory`](software-factory) | Controller — frames the run, spawns each stage, owns the handoff between them. Runs manual by default; `/software-factory 42 auto` opts that run into auto-merge. |
-| [`factory-implement`](factory-implement) | Builds the change in an isolated worktree cut from fresh `origin/<default>`, proves it works, opens a PR, and watches CI to green. |
-| [`factory-review`](factory-review) | Reviews the PR adversarially with no context outside it, fixes every finding, loops to 90% confidence or declares it unresolvable, then squashes and rewrites the description. |
+| [`factory-implement`](factory-implement) | Builds the change in an isolated worktree cut from fresh `origin/<default>`, proves it works, opens a PR carrying that proof, and hands it to review without waiting on CI. |
+| [`factory-review`](factory-review) | Reviews the PR adversarially with no context outside it, fixes the obvious issues, hands back escalations and spin-offs, then leaves coherent commits, a rewritten description, a green build and a merge recommendation. |
 | [`factory-handoff`](factory-handoff) | Checks the PR against what was actually asked for, verifies the proof is real, and gives a link, a status and a merge recommendation. |
 | [`factory-land`](factory-land) | Merges an approved, green PR, confirms the issue closed, and tears down the worktree, branch and lock. |
 | [`factory-spin-off`](factory-spin-off) | Files everything review left out of the merged PR as GitHub issues linked back to it, splitting anything too big for one run with `split-into-issues`. |

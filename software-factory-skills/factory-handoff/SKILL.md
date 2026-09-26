@@ -1,6 +1,6 @@
 ---
 name: factory-handoff
-description: Audit a reviewed PR against what was actually asked for, confirm it carries real proof and an honest risk list, then present the user a link, a status, and a merge recommendation — and watch for their approval or comments. In an opt-in auto-merge run it makes the merge call itself, but only at 9/10-or-better confidence with no human-eyes items and a clean match to the original ask. Use when the `software-factory` controller reaches the surface-to-human stage, or when the user asks to "show me the PR", "is this PR ready for me", or "check this PR against what I asked for". Read-only: it never changes code, pushes, or merges.
+description: Software-factory handoff stage — check the reviewed PR against the original ask and present it to the user with a merge recommendation.
 ---
 
 # Factory: surface the PR to the human

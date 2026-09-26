@@ -1,6 +1,6 @@
 ---
 name: factory-implement
-description: Build one change in an isolated git worktree cut from fresh origin/<default>, prove it works with real evidence — before/after screenshots whenever the change is visible, text only when it is not — open a PR carrying that proof (or a concrete reason there is none), and hand it straight to review without waiting on CI. The controller can resume it to rework the PR after the user decides on a review escalation. Use when the `software-factory` controller dispatches the implement stage, or when the user asks to "do the work in a worktree", "implement this in isolation", or "build it and open a PR with proof". Does the work only — it never reviews, merges, or cleans up.
+description: Software-factory implement stage — build the change in an isolated worktree, prove it works, and open a PR with that proof.
 ---
 
 # Factory: implement
