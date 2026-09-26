@@ -24,6 +24,11 @@ confidence of 9/10 or better, with *Needs human eyes* empty, checks green, and
 the handoff audit confirming the PR matches what was actually asked for. Any gate unmet and
 the PR comes to you as usual.
 
+Review sorts what it wants you to know into two lists. *Needs human eyes* holds
+decisions, and any item there blocks an auto-merge. *Notices* holds things to see
+but not decide, such as a subtle fix or a check to run after deploy. Notices
+never block. Every auto-merge report lists them, so you see them either way.
+
 Shared rules — worktree isolation and locking, run state, the auto-merge gate,
 proof standards, PR shape — live in
 [`software-factory/references/conventions.md`](software-factory/references/conventions.md).

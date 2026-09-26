@@ -236,8 +236,10 @@ Then:
   A weak or wrong one ("felt internal", "app was awkward to launch", no reason at
   all) is a finding: capture the images yourself if the change is visible.
 - **You cannot capture them either** (the app will not start here) — say so in
-  *Proof it works* with the actual error, and add a *Needs human eyes* item
-  telling the human exactly what to look at. That does not stop the review.
+  *Proof it works* with the actual error, and add an escalation to *Needs human
+  eyes* telling the human exactly what to look at. A visible change nobody has
+  seen needs a person to decide it works, so it is an escalation, not a notice.
+  That does not stop the review.
 
 **Whether the change works is your call, with or without pictures.** Images are
 evidence, not a gate: if the tests, the code and what you ran convince you, the
@@ -341,16 +343,22 @@ fresh from your own passes:
 - **Review findings** — what you found and fixed, one line each, with the
   reasoning behind anything non-obvious. Include a builder that skipped
   available proof or gave a weak reason for skipping it.
-- **Needs human eyes** — two kinds of item, in this order:
-  1. **Escalations**, in the shape from step 3: location, problem, *Not fixed
-     because*, *Recommendation*, severity. Blocking first.
-  2. **Check this** — code you did fix but a human should still look at: a
-     business rule you inferred, a trade-off you chose, an unhappy path you
-     could not exercise. One line each, `path/file.ts:42` plus why.
+- **Needs human eyes** — the escalations only, in the shape from step 3:
+  location, problem, *Not fixed because*, *Recommendation*, severity. Blocking
+  first. These are things the human has to **decide**.
+- **Notices** — things the human should **see** but need not decide: code you
+  did fix that is still worth a look, an unhappy path you could not exercise, a
+  check to run after deploy (a log to watch, a live-only behaviour to confirm).
+  One line each, `path/file.ts:42` plus why.
 
-  Every item is one *you* found and still stand behind — nothing inherited from
-  the body you were handed. `None.` is a legitimate answer when you have earned
-  it.
+  Sort each item by that test and nothing else. An inferred business rule, or a
+  trade-off where another reasonable choice exists, is a decision, so it is an
+  escalation even if you already coded your pick. Never move a decision down to
+  *Notices* to make the list look shorter.
+
+  Every item in both sections is one *you* found and still stand behind —
+  nothing inherited from the body you were handed. `None.` is a legitimate
+  answer for either when you have earned it.
 - **Spin-offs** — every spin-off from step 3, in the shape shown there. `None.`
   when there are none.
 - **Confidence** — `x/10`, one sentence on what caps it, and the line
@@ -395,6 +403,8 @@ Fixed (4): token refresh race; missing empty-cart test; dead helper removed; sta
 Proof: before/after captured by review (builder omitted them)
 Escalated (1):
   [blocking] src/billing/invoice.ts:88 — per-line rounding. Recommend rounding on the total.
+Notices (1):
+  After deploy, watch for 404s on the removed /v1/export route.
 Spin-offs (1):
   src/audit/log.ts:88 — unpaged audit-log query. One issue.
 ```
@@ -421,7 +431,8 @@ pushed. Treat each as a scoped job:
 3. Apply step 5 to the delta: check it, run the full suite, and do a full pass
    only if the delta is large or touches high-risk logic.
 4. Re-squash only if your changes belong in an existing commit, update the PR
-   body (findings, *Needs human eyes*, *Confidence*, the new reviewed SHA), push
+   body (findings, *Needs human eyes*, *Notices*, *Confidence*, the new
+   reviewed SHA), push
    once, watch CI, and report in the same shape.
 
 Never re-review the untouched rest of the PR on a follow-up. It was reviewed.

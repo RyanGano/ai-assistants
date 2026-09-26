@@ -57,9 +57,10 @@ in the browser". Say so rather than passing it along.
 
 ## 3. Is the risk list honest?
 
-*Needs human eyes* must exist and must be specific — `path/file.ts:42` plus why.
-An empty risk list on a non-trivial change is itself a risk: it usually means the
-review looked for typos rather than for trouble.
+*Needs human eyes* and *Notices* must both exist, and every item in them must be
+specific — `path/file.ts:42` plus why. If both are empty on a non-trivial change,
+that is itself a risk: it usually means the review looked for typos rather than
+for trouble.
 
 Each escalation (an issue review chose not to fix) must say why it was not
 fixed and what review recommends. If one is missing either part, point that out
@@ -69,6 +70,15 @@ itself, because that is work pushed onto the user.
 Cross-check it against the diff: anything you would want a human to look at that
 the PR does not mention gets added to your report (not to the PR — you do not
 edit it).
+
+Read *Notices* with one question per item: *does the user have to decide
+anything here?* A notice asks only to be seen: a subtle fix, a path nobody could
+exercise, a check to run after deploy. An inferred business rule, a trade-off
+with another reasonable answer, or a risk the user would want to rule on before
+it lands is a decision. A decision filed as a notice is mis-sorted, because it
+would pass the auto-merge gate unanswered. Report it under **Decide**, say review
+put it in the wrong section, and treat *Needs human eyes* as non-empty from here
+on.
 
 Then read *Spin-offs* with one question per item: *is this PR correct and
 complete without it?* A spin-off the PR actually depends on is mis-sorted — it
@@ -91,8 +101,9 @@ Scope       +1 unrelated fix (stale import cleanup) in its own commit
 Decide
   1. [should-fix] src/auth/session.ts:120 — 30s refresh window is a guess.
      Not fixed: no stated token lifetime. Review recommends: 60s, matching the IdP default.
-Check
+Notices (for your eyes; they do not block)
   - src/auth/session.ts:88 — token-refresh race, fixed but subtle
+  - After deploy: watch for 401 spikes on /auth/refresh for a day
 Spin off (filed as issues after merge)
   S1. src/auth/logout.ts:30 — logout has the same redirect bug. One issue.
 
@@ -122,6 +133,8 @@ code lands. Then work the gate table in conventions → *Auto-merge gate*. Yours
 check are the three the audit covers:
 
 - *Needs human eyes* is exactly `None.`
+- *Notices* holds no decision in disguise (step 3). Notices themselves never
+  block: an auto-merge with five genuine notices still merges.
 - The PR does what the task statement asked, and nothing more.
 - The proof is present and spot-checks out — including the images, where the
   change has a visible surface.
@@ -137,7 +150,13 @@ run `factory-land` in auto mode, and state plainly that it is going in unreviewe
 ```
 Auto-merge gates met — 9/10, no human-eyes items, green, matches the ask.
 Merging without your review. Diff: <url>/files
+Notices for you (not blocking):
+  - After deploy: watch for 404s on the removed /v1/export route
 ```
+
+List every notice from the PR in full, or `Notices: none.` Merging past a
+notice is fine; merging past one silently is not. The user reads it here
+instead of in the PR they did not open.
 
 **Any gate fails** → record `autoMergeDecision: "deferred: <gate>"`, say which
 gate in one line, and continue to step 6 as a normal manual handoff.
@@ -151,8 +170,10 @@ round an 8 up, to let a gate pass.
 At 9/10 the reviewer has said out loud that something caps its confidence. Read
 what that something is, in the PR's *Confidence* line. If it names a risk a human
 would want to weigh in on, that belongs in *Needs human eyes* — and a populated
-*Needs human eyes* means no auto-merge. A 9 whose caveat has quietly gone
-unrecorded is the gap this threshold opens; closing it is your job.
+*Needs human eyes* means no auto-merge. If it only names something to watch or
+look at, it belongs in *Notices*, and you list it in the auto-merge report if
+review did not. A 9 whose caveat has quietly gone unrecorded is the gap this
+threshold opens; closing it is your job.
 
 ## 6. Watch for the user's response
 

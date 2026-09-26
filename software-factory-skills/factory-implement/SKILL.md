@@ -152,7 +152,7 @@ two-column table so they render side by side in the PR, command output in fenced
 blocks beneath them. If there are no images, this section opens with the
 one-sentence reason the change has no visible surface.
 
-**Do not write *Needs human eyes*, *Confidence*, or any other risk list or
+**Do not write *Needs human eyes*, *Notices*, *Confidence*, or any other risk list or
 self-assessment.** Those sections belong to `factory-review`, which writes them
 from its own passes. A list from you reads to the reviewer as a vetted verdict —
 it gets carried forward instead of re-derived, and review stops being the gate.
@@ -186,7 +186,8 @@ starting a new builder.
 - **Never** work in a tree another agent owns. Collision → stop.
 - **Never** review your own work adversarially — that is the next agent's job,
   and your self-assessment would contaminate it. That includes the PR body: no
-  *Needs human eyes*, no *Confidence*, no "areas of concern" by another name.
+  *Needs human eyes*, no *Notices*, no *Confidence*, no "areas of concern" by
+  another name.
 - **Never** merge, never delete the worktree, never release the lock.
 - **Never** push to the default branch.
 - **Never describe a screen instead of showing it.** If the change is visible,

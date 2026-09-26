@@ -14,6 +14,7 @@ Where a stage skill and this file disagree, this file wins.
 | **Home repo** | The user's normal clone — where the controller runs. Never the place code is written. |
 | **Worktree** | The isolated checkout a run's code is written in. |
 | **Escalation** | A review finding the reviewer did not fix, handed to the human with why and a recommendation. |
+| **Notice** | Something review wants the human to see but not decide: fixed-but-subtle code, a path no one could exercise, a check to run after deploy. Reported every time, never blocks a merge. |
 | **Spin-off** | An escalation the run deliberately leaves out of this PR because the PR is correct and complete without it. Filed as a GitHub issue after the merge. Not to be confused with a *follow-up*. |
 | **Follow-up** | A scoped re-review of only what changed after handoff: user comments, an escalation decision, or new commits. |
 
@@ -152,6 +153,7 @@ Auto-merge fires **only when every one of these is true**:
 | Confidence is **9/10 or better** | `factory-review` | review's own score |
 | Review recommends **Merge** | `factory-review` | run state |
 | *Needs human eyes* is `None.` | `factory-handoff` | PR body |
+| *Notices* holds no decision in disguise | `factory-handoff` | the audit |
 | *Spin-offs* holds nothing the PR depends on | `factory-handoff` | the audit |
 | PR does what the task statement asked, nothing more | `factory-handoff` | the audit |
 | Proof is present and spot-checks out | `factory-handoff` | the audit |
@@ -161,6 +163,13 @@ Auto-merge fires **only when every one of these is true**:
 failure and is not reported as one; it is the mechanism working. Never relax a
 gate, re-run review hoping for a better number, or ask the reviewer to
 reconsider its score to unblock a merge.
+
+**Notices are not a gate.** Their existence never stops an auto-merge. They
+still reach the user: every auto-merge report lists them in full, so an
+unattended merge never hides what review wanted seen. The one exception is a
+notice that is really a decision the user has to make, such as an unchosen
+trade-off or a risk they would want to rule on before it lands. That is a
+mis-sorted escalation, and `factory-handoff` treats it as one.
 
 Record the outcome in run state as `autoMergeDecision`: `"merged"`, or
 `"deferred: <the gate that stopped it>"`.
@@ -334,8 +343,9 @@ fixes:
 - If the reviewer's fixes changed what the screen shows, it recaptures the
   "after" image itself.
 - If nobody can capture them (the app will not start), *Proof it works* says so
-  with the error. *Needs human eyes* then tells the human exactly what to look
-  at.
+  with the error. *Needs human eyes* then carries an escalation telling the
+  human exactly what to look at. A visible change nobody has seen is a decision,
+  not a notice, so it blocks an auto-merge.
 - Images are evidence, not a gate. The reviewer decides whether the change works
   from everything it has, with or without them.
 
@@ -362,17 +372,22 @@ Markdown. The sections are split by stage:
 ## Proof it works      <- factory-implement (review keeps it current)
 ## Review findings     <- factory-review
 ## Needs human eyes    <- factory-review
+## Notices             <- factory-review
 ## Spin-offs           <- factory-review
 ## Confidence          <- factory-review
 ```
 
 - **Proof it works** — the evidence from the table above, inline.
 - **Review findings** — what review found and fixed, one line each.
-- **Needs human eyes** — first the escalations (issues review did not fix: the
-  location, the problem, *Not fixed because*, *Recommendation*, and a severity
-  of blocking, should-fix or minor), then specific `file.ts:42` pointers to
-  fixed-but-subtle code. Or `None.` Never leave it empty. An escalation the PR
-  depends on stays here even when the fix is "spin it off first".
+- **Needs human eyes** — the escalations only: issues review did not fix, each
+  with the location, the problem, *Not fixed because*, *Recommendation*, and a
+  severity of blocking, should-fix or minor. Or `None.` Never leave it empty.
+  An escalation the PR depends on stays here even when the fix is "spin it off
+  first". Anything here blocks an auto-merge.
+- **Notices** — things the human should see but need not decide: specific
+  `file.ts:42` pointers to fixed-but-subtle code, a path no one could exercise,
+  and checks to run after deploy. Or `None.` These never block a merge, and are
+  always reported to the user.
 - **Spin-offs** — unfixed work the PR is correct and complete without, each
   with the location, the problem, *Not fixed here because*, *Recommendation*,
   and a **Size** of `one issue` or `needs splitting`. Or `None.`
@@ -380,7 +395,7 @@ Markdown. The sections are split by stage:
   `Reviewed through <sha>`. Ends with review's bold **Merge** or **Do not
   merge** recommendation and its reason.
 
-The implementer never writes the last four. Review is the gate on whether a PR
+The implementer never writes the last five. Review is the gate on whether a PR
 is complete and mergeable, and a risk list handed to it by the author gets
 inherited rather than judged. Review writes those sections from its own passes
 alone.

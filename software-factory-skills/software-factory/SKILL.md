@@ -63,7 +63,8 @@ unreviewed merge.
 Auto mode does not skip review or the handoff audit. It removes only the wait
 for the user's approval, and only when every gate in conventions →
 *Auto-merge gate* holds — chiefly a review confidence of **9/10 or better** and
-an empty *Needs human eyes*. Any gate unmet and the run falls back to a normal
+an empty *Needs human eyes*. Review's *Notices* never block: they are listed in
+the auto-merge report instead. Any gate unmet and the run falls back to a normal
 handoff.
 
 `autoMerge` applies to this run only. It never carries to the next one.
@@ -253,9 +254,13 @@ unattended merge is never silently unattended:
 
 ```
 #118 auto-merged · <n>/10 · 1 full pass + 2 delta checks · issue #42 closed
+Notices (not blocking): after deploy, watch for 404s on the removed /v1/export route
 Spin-offs filed: #131, #132 (parent of #133–#135)
 You did not review this one. Diff: <url>/files
 ```
+
+Always include the *Notices* line, or `Notices: none.` Review's notices never
+hold up an auto-merge, and this report is where the user sees them.
 
 ## 7. Next run
 

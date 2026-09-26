@@ -40,7 +40,8 @@ Only when the run state says `autoMerge: true`. Re-check the full gate table in
 conventions → *Auto-merge gate* yourself from the run state and the PR — do not
 take the controller's word for it. Every gate, including confidence of **9/10
 or better**, `autoMergeDecision: "merged"` recorded by `factory-handoff`, and
-*Needs human eyes* reading `None.`
+*Needs human eyes* reading `None.` *Notices* are not a gate: do not stop on
+them, but carry them into the report.
 
 If `autoMerge` is absent or false, this run is manual. A missing or unreadable
 run-state file means manual — never infer auto mode from the absence of evidence.
@@ -135,6 +136,7 @@ unattended merge is obvious in the transcript rather than buried:
 ```
 #118 AUTO-MERGED unreviewed (squash) · <n>/10 · issue #42 closed
 Diff: https://github.com/owner/repo/pull/118/files
+Notices (not blocking): After deploy, watch for 404s on the removed /v1/export route.
 Worktree removed, branch Fix_42 deleted local+remote, lock released
 main now at a1b2c3d
 ```
