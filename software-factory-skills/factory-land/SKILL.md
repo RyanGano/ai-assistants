@@ -96,9 +96,10 @@ git -C "$HOME_REPO" fetch origin --prune         # drop the deleted remote ref
 rm -f "$HOME_REPO/.git/software-factory/locks/$BRANCH.lock"
 ```
 
-**Leave the proof branch (`sf-proof/<branch>`) alone.** It holds the before/after
-images the merged PR embeds; deleting it turns the PR's evidence into broken
-image links forever. It is not a straggler.
+**Leave the proof branch (`sf-proof`) and the run's `<branch>/` folder on it
+alone.** It holds the before/after images every PR embeds. Deleting it, or the
+folder, turns the evidence into broken image links forever. It is not a
+straggler.
 
 Then update the home repo's default branch so the next run starts from the merge:
 

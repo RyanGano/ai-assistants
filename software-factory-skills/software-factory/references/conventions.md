@@ -112,7 +112,7 @@ the worktree being deleted:
   "baseBranch": "main",
   "pr": 118,
   "prUrl": "https://github.com/owner/repo/pull/118",
-  "proofBranch": "sf-proof/Fix_42",
+  "proofPath": "sf-proof/Fix_42",
   "stage": "implement | review | handoff | land | spin-off | done | parked | blocked",
   "fullPasses": 1,
   "deltaChecks": 2,
@@ -291,23 +291,41 @@ Images must be visible **inside the PR**, so a reader sees them without
 downloading anything. They never go on the PR branch — proof is evidence about
 the change, not part of it.
 
-Push them to an orphan proof branch in the same repo, built with plumbing so no
-working tree is ever switched:
+Every run shares **one** orphan proof branch per repo, `sf-proof`, with a
+`<branch>/` folder per run. Add to it with plumbing, so no working tree is ever
+switched:
 
 ```bash
-PROOF_BRANCH="sf-proof/$BRANCH"
+PROOF_BRANCH=sf-proof
 GITDIR=$(git -C "$WT" rev-parse --absolute-git-dir)
-export GIT_INDEX_FILE="$SCRATCH/proof.index"; rm -f "$GIT_INDEX_FILE"
-git --git-dir="$GITDIR" --work-tree="$SCRATCH/proof" add -A .
-TREE=$(git --git-dir="$GITDIR" write-tree)
-COMMIT=$(git --git-dir="$GITDIR" commit-tree "$TREE" -m "Proof images for $BRANCH")
-git --git-dir="$GITDIR" push --force origin "$COMMIT:refs/heads/$PROOF_BRANCH"
+export GIT_INDEX_FILE="$SCRATCH/proof.index"
+for attempt in 1 2 3; do
+  rm -f "$GIT_INDEX_FILE"
+  PARENT=
+  if git --git-dir="$GITDIR" fetch -q origin "refs/heads/$PROOF_BRANCH" 2>/dev/null; then
+    PARENT=$(git --git-dir="$GITDIR" rev-parse FETCH_HEAD)
+    git --git-dir="$GITDIR" read-tree "$PARENT"
+  fi
+  git --git-dir="$GITDIR" --work-tree="$SCRATCH/proof" add --ignore-removal -- "$BRANCH"
+  TREE=$(git --git-dir="$GITDIR" write-tree)
+  COMMIT=$(git --git-dir="$GITDIR" commit-tree "$TREE" ${PARENT:+-p "$PARENT"} -m "Proof images for $BRANCH")
+  git --git-dir="$GITDIR" push origin "$COMMIT:refs/heads/$PROOF_BRANCH" && break
+done
 unset GIT_INDEX_FILE
 ```
 
-`$SCRATCH/proof` holds only the images (`before-<thing>.png`,
-`after-<thing>.png`). The branch has no parent and no source files; `--force` is
-safe on it and only on it, because each push replaces the run's own proof.
+`$SCRATCH/proof/$BRANCH/` holds only the images (`before-<thing>.png`,
+`after-<thing>.png`). Each push stacks a commit on the current tip and touches
+only this run's folder. Other runs' folders stay as they are, and a later
+publish (review's recapture, say) adds or overwrites files without dropping
+earlier ones. **Never force-push this branch.** It holds every PR's evidence,
+and a rejected push only means another run published first, so the loop fetches
+the new tip and tries again.
+
+If the push fails with `cannot lock ref 'refs/heads/sf-proof'`, the repo still
+has old per-run `sf-proof/<branch>` branches. Git can't hold both. Stop and tell
+the user rather than deleting them: each one needs folding into `sf-proof` as
+its `<branch>/` folder first.
 
 Embed them in the PR body:
 
@@ -322,7 +340,8 @@ In a **private** repo `raw.githubusercontent.com` will not render; use
 which resolves for signed-in users with access. Either way, open the PR
 afterwards and confirm the images actually render — a broken image is no proof.
 
-The proof branch outlives the merge, so the PR keeps rendering forever;
+The URL path `sf-proof/<branch>/<file>` is the branch name followed by the
+folder. The proof branch outlives the merge, so the PR keeps rendering forever;
 `factory-land` deletes the run's feature branch and leaves the proof branch
 alone.
 

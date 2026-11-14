@@ -123,8 +123,9 @@ absence of visual surface. Say exactly that in the PR, with the error and what
 you tried, and report `blocked` if it stopped you from verifying the change at
 all.
 
-Publish the images to the run's proof branch (conventions → *Publishing proof
-images*) and record `proofBranch` in run state. Keep the originals in the
+Publish the images to the run's folder on the shared `sf-proof` branch
+(conventions → *Publishing proof images*) and record `proofPath`
+(`sf-proof/<branch>`) in run state. Keep the originals in the
 scratchpad; never commit them to the PR branch.
 
 ## 5. Commit and push

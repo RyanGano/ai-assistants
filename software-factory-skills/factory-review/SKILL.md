@@ -226,7 +226,7 @@ Then:
   the diff actually affects, and differ the way the PR claims. If your fixes
   changed what that screen shows, recapture the "after" yourself.
 - **Images missing, change is visible** — capture them yourself (the `run` skill
-  launches the app), publish them to the proof branch (conventions →
+  launches the app), publish them to the run's folder on `sf-proof` (conventions →
   *Publishing proof images*), and add them to *Proof it works* marked
   `Captured by review`. Do **not** send the PR back to the builder for them.
   Note in *Review findings* that the builder omitted proof it could have given,
