@@ -132,10 +132,7 @@ Re: <comment html_url>
 git push
 ```
 
-End commit messages with:
-```
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
-```
+End commit messages with the `Co-Authored-By:` trailer from the session's attribution instructions.
 
 **Always leave a reply on the thread** — this is both the answer to the reviewer
 and the durable "handled" marker the next loop pass keys off. Reference the commit

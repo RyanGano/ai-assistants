@@ -114,10 +114,7 @@ git commit -m "Fix #<issueNum>: <concise summary>"
 git push -u origin Fix_<issueNum>
 ```
 
-End commit messages with the co-author trailer:
-```
-Co-Authored-By: Claude Opus [version] <noreply@anthropic.com>
-```
+End commit messages with the `Co-Authored-By:` trailer from the session's attribution instructions.
 Only commit and push once the build and tests are green (step 5).
 
 ### 7. Open a Draft PR

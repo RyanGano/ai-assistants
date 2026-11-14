@@ -201,7 +201,7 @@ Reproduce on the parent commit:
   npm test -- session.concurrent   (fails: "expected 200, got 401")
   or: open two tabs, let the token expire, refresh both within ~1s.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Co-Authored-By: <the trailer from the session's attribution instructions>
 ```
 
 Every fix commit states **why it was needed**, **before/after behavior**, and

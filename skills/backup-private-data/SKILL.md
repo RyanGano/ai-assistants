@@ -22,7 +22,7 @@ If the user did not name a folder, ask which one — never guess.
 2. Read `C:\Code\app-private-data\CLAUDE.md` and `README.md`. They carry the rules
    this skill has to keep true, and the tables you will update.
 3. Pick the destination name. Match what is already there: a whole project's data
-   goes in a top-level folder (`find-me-local/`); a Claude skill goes in
+   goes in a top-level folder (`ai-mysteries-cron/`); a Claude skill goes in
    `private-skills/<skill-name>/`. Confirm the destination does **not** exist.
 4. Check whether the source repo is a git repo and whether the folder is tracked
    in it (`git ls-files <path>`). If it *is* tracked, its contents are already in
